@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Supabase SQL Setup</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px;">
+  <h2>College Event Platform - Supabase SQL Setup</h2>
+  <button id="copyBtn" style="padding: 12px 24px; font-size: 16px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer;">
+    Click Here to Copy SQL to Clipboard
+  </button>
+  <p id="status" style="color: green; font-weight: bold;"></p>
+  <br><br>
+  <textarea id="sqlText" style="width: 100%; height: 500px; font-family: monospace;" readonly></textarea>
+
+  <script>
+    fetch('/setup.sql?t=' + Date.now())
+      .then(r => r.text())
+      .then(sql => {
+        document.getElementById('sqlText').value = sql;
+      });
+
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      const textarea = document.getElementById('sqlText');
+      textarea.select();
+      document.execCommand('copy');
+      document.getElementById('status').innerText = 'Copied to clipboard successfully!';
+    });
+  </script>
+</body>
+</html>

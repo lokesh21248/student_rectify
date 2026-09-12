@@ -1,0 +1,131 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/server";
+import { generateSlug } from "@/lib/utils";
+import { revalidatePath } from "next/cache";
+
+export async function GET() {
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("events")
+      .select(`
+        *,
+        categories!category_id(id, name, slug, icon, color),
+        colleges!college_id(id, name, slug, logo_url)
+      `)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ events: data });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Failed to fetch events" }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const {
+      title,
+      slug: rawSlug,
+      short_description,
+      description,
+      category_id,
+      college_id,
+      organizer_name,
+      mode = "offline",
+      venue,
+      address,
+      city = "New Delhi",
+      state = "Delhi",
+      meeting_url,
+      start_at,
+      end_at,
+      registration_deadline,
+      max_participants = 500,
+      eligibility = "Open to all verified college students",
+      rules = "Standard event code of conduct applies",
+      prize_info = "Certificate & Awards",
+      banner_url,
+      has_certificate = true,
+      featured = false,
+      status = "published",
+      tags = [],
+    } = body;
+
+    if (!title || !category_id || !college_id || !start_at || !end_at) {
+      return NextResponse.json(
+        { error: "Missing required fields: title, category, college, start_at, end_at" },
+        { status: 400 }
+      );
+    }
+
+    const supabase = createAdminClient();
+
+    // 1. Skip organizer logic entirely since the column is missing in the user's Supabase schema
+    
+    // 2. Ensure unique slug
+    let slug = rawSlug || generateSlug(title);
+    const { data: existingEvent } = await supabase
+      .from("events")
+      .select("id")
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (existingEvent) {
+      slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
+    }
+
+    // 3. Construct insert payload dynamically (omitting organizer_id)
+    const insertPayload: any = {
+      title,
+      slug,
+      short_description: short_description || null,
+      description: description || null,
+      category_id,
+      college_id,
+      organizer_name: organizer_name || null,
+      mode,
+      venue: venue || null,
+      address: address || null,
+      city: city || null,
+      state: state || null,
+      meeting_url: meeting_url || null,
+      start_at,
+      end_at,
+      registration_deadline: registration_deadline || null,
+      max_participants: Number(max_participants) || 500,
+      eligibility: eligibility || null,
+      rules: rules || null,
+      prize_info: prize_info || null,
+      banner_url: banner_url || null,
+      has_certificate: Boolean(has_certificate),
+      featured: Boolean(featured),
+      approved: true, // Admin-created events are auto-approved
+      status,
+      tags: Array.isArray(tags) ? tags : typeof tags === "string" ? tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [],
+    };
+
+    // 4. Insert into events table
+    const { data: event, error } = await supabase
+      .from("events")
+      .insert(insertPayload)
+      .select("*")
+      .single();
+
+    if (error) {
+      console.error("Admin event POST error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    revalidatePath("/", "layout");
+
+    return NextResponse.json({ success: true, event });
+  } catch (error: any) {
+    console.error("Admin event POST catch:", error);
+    return NextResponse.json({ error: error.message || "Failed to create event" }, { status: 500 });
+  }
+}
