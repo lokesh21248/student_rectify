@@ -6,6 +6,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const supabase = createAdminClient();
     const { id } = await params;
     const body = await req.json();
+    
+    if (typeof body.is_active !== 'undefined') {
+      body.status = body.is_active ? 'active' : 'inactive';
+      delete body.is_active;
+    }
 
     const { data, error } = await supabase
       .from("colleges")
@@ -18,7 +23,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ college: data });
+    return NextResponse.json({ 
+      college: data ? { ...data, is_active: data.status !== 'inactive' } : null 
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

@@ -13,13 +13,20 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ data });
+  return NextResponse.json({ 
+    data: data?.map((c: any) => ({ ...c, is_active: c.status !== 'inactive' })) 
+  });
 }
 
 export async function POST(req: Request) {
   try {
     const supabase = createAdminClient();
     const body = await req.json();
+    
+    if (typeof body.is_active !== 'undefined') {
+      body.status = body.is_active ? 'active' : 'inactive';
+      delete body.is_active;
+    }
 
     const { data, error } = await supabase
       .from("colleges")

@@ -79,7 +79,7 @@ export interface Category {
   is_active?: boolean;
   status?: string;
   featured?: boolean;
-  icon_type?: 'library' | 'upload';
+  icon_type?: 'library' | 'upload' | 'url';
   icon_url?: string | null;
   image_url?: string | null;
   created_at: string;
