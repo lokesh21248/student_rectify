@@ -83,6 +83,8 @@ export function AdminDashboardClient({
     color: "#6366F1",
     sort_order: 0,
     is_active: true,
+    icon_type: "icon" as "icon" | "image",
+    image_url: "",
   });
 
   const [events, setEvents] = useState(initialEvents);
@@ -430,7 +432,7 @@ export function AdminDashboardClient({
       setLocalCategories((prev) => [...prev, data.category].sort((a, b) => a.sort_order - b.sort_order));
       toast.success("Category created!");
       setShowCategoryForm(false);
-      setCategoryForm({ name: "", slug: "", description: "", icon: "more-horizontal", color: "#6366F1", sort_order: 0, is_active: true });
+      setCategoryForm({ name: "", slug: "", description: "", icon: "more-horizontal", color: "#6366F1", sort_order: 0, is_active: true, icon_type: "icon", image_url: "" });
     } catch (err: any) {
       toast.error(err.message || "Failed to create category");
     } finally {
@@ -2174,7 +2176,7 @@ export function AdminDashboardClient({
             <button
               onClick={() => {
                 setEditingCategory(null);
-                setCategoryForm({ name: "", slug: "", description: "", icon: "more-horizontal", color: "#6366F1", sort_order: 0, is_active: true });
+                setCategoryForm({ name: "", slug: "", description: "", icon: "more-horizontal", color: "#6366F1", sort_order: 0, is_active: true, icon_type: "icon", image_url: "" });
                 setShowCategoryForm(true);
               }}
               className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold shadow-sm text-sm flex items-center gap-2"
