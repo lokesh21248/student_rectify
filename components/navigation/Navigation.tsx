@@ -13,6 +13,7 @@ import {
   Grid3X3,
   Award,
   Shield,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -79,7 +80,7 @@ export function Navigation() {
                 <span className="text-white font-bold text-sm">E</span>
               </div>
               <span className="font-bold text-slate-900 text-lg tracking-tight">
-                Edu<span style={{ color: theme.palette.primary.main }}>Events</span>
+                Event<span style={{ color: theme.palette.primary.main }}>ly</span>
               </span>
             </Link>
 
@@ -149,7 +150,7 @@ export function Navigation() {
                   href="/admin"
                   variant="contained"
                   sx={{
-                    display: "flex",
+                    display: { xs: "none", md: "flex" },
                     alignItems: "center",
                     gap: 0.5,
                     backgroundColor: "#0f172a", // slate-900
@@ -174,6 +175,7 @@ export function Navigation() {
                   color="primary"
                   variant="outlined"
                   sx={{
+                    display: { xs: "none", md: "flex" },
                     fontWeight: 700,
                     fontSize: "0.75rem",
                     borderRadius: "8px",
@@ -183,15 +185,23 @@ export function Navigation() {
                 />
               )}
 
-              {/* Mobile menu button */}
-              <IconButton
-                sx={{ display: { xs: "flex", md: "none" } }}
-                onClick={() => setIsMobileOpen(!isMobileOpen)}
-                color="inherit"
-                aria-label="Toggle menu"
-              >
-                {isMobileOpen ? <X size={20} /> : <MenuIcon size={20} />}
-              </IconButton>
+              {/* Mobile notification & menu buttons */}
+              <div className="flex items-center md:hidden gap-1">
+                <IconButton
+                  color="inherit"
+                  aria-label="Notifications"
+                >
+                  <Bell size={20} className="text-slate-700" />
+                  <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full" />
+                </IconButton>
+                <IconButton
+                  onClick={() => setIsMobileOpen(!isMobileOpen)}
+                  color="inherit"
+                  aria-label="Toggle menu"
+                >
+                  {isMobileOpen ? <X size={20} className="text-slate-700" /> : <MenuIcon size={20} className="text-slate-700" />}
+                </IconButton>
+              </div>
             </div>
           </Toolbar>
         </div>
@@ -258,8 +268,7 @@ export function Navigation() {
           )}
         </AnimatePresence>
       </AppBar>
-
-      {/* Spacer */}
+      {/* Spacer to push content down since AppBar is fixed */}
       <Toolbar sx={{ minHeight: "64px !important" }} />
     </>
   );

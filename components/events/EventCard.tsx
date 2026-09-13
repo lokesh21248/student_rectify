@@ -93,15 +93,15 @@ export function EventCard({ event, className = "" }: EventCardProps) {
           )}
         </div>
 
-        {/* 6. STATS & 7. ACTION / COUNTDOWN */}
-        <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
+        {/* 6. STATS & COUNTDOWN */}
+        <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               <Heart className="w-3.5 h-3.5 text-rose-500" />
               <span className="text-xs font-semibold text-slate-600">{formatCount(event.interest_count)}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-primary-500" />
+              <Users className="w-3.5 h-3.5 text-blue-500" />
               <span className="text-xs font-semibold text-slate-600">{formatCount(event.registration_count)}</span>
             </div>
           </div>
@@ -111,6 +111,11 @@ export function EventCard({ event, className = "" }: EventCardProps) {
             {isLive && <CountdownTimer targetDate={event.end_at} compact label="Ends" />}
             {!isUpcoming && !isLive && <StatusBadge status={status} compact />}
           </div>
+        </div>
+
+        {/* 7. ACTION BUTTON */}
+        <div className="w-full text-center py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl transition-colors">
+          {isLive ? "Join Live Event →" : isUpcoming ? "Register Now" : "View Details"}
         </div>
       </div>
     </Link>

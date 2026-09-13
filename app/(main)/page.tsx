@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Zap, Award } from "lucide-react";
+import { ArrowRight, Zap, Award, Search, Compass, BookOpen, QrCode, Plus } from "lucide-react";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { CategoryGrid } from "@/components/home/CategoryCard";
 import { EventCard } from "@/components/events/EventCard";
@@ -32,8 +32,63 @@ export default async function HomePage() {
 
   return (
     <div className="page-enter pb-16">
-      {/* ── 1. Hero ───────────────────────────────────────────────────────── */}
-      <section className="container-page pt-6 sm:pt-8 pb-10 sm:pb-12">
+      {/* ── MOBILE: Evently Top Layout ──────────────────────────────────────── */}
+      <section className="md:hidden container-page pt-4 pb-6 space-y-6">
+        {/* Mobile Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search events, colleges..."
+            className="w-full bg-slate-100 border-none rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 transition-shadow outline-none text-slate-900"
+          />
+        </div>
+
+        {/* Mobile Hero Card */}
+        <div className="relative rounded-[20px] overflow-hidden bg-[#0A192F] p-6 text-white shadow-lg">
+          <div className="absolute inset-0 opacity-40 bg-gradient-to-br from-blue-600/30 to-purple-600/30" />
+          <div className="relative z-10">
+            <h2 className="text-[22px] font-extrabold leading-tight mb-2">
+              COLLEGE EVENTS<br />MAKE BIGGER STORIES
+            </h2>
+            <p className="text-white/70 text-xs mb-5">
+              Learn. Participate. Connect. Grow.
+            </p>
+            <Link
+              href="/events"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors text-xs"
+            >
+              <span>Explore Events</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div>
+          <h3 className="font-bold text-slate-900 mb-3 text-sm tracking-tight">Quick Actions</h3>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { icon: Compass, label: "Find\nEvents", color: "text-blue-500", bg: "bg-blue-50", href: "/events" },
+              { icon: Award, label: "Get\nCertificates", color: "text-purple-500", bg: "bg-purple-50", href: "/certificates" },
+              { icon: QrCode, label: "QR\nCheck-in", color: "text-slate-600", bg: "bg-slate-100", href: "/my-events" },
+              { icon: Plus, label: "Create\nEvent", color: "text-emerald-500", bg: "bg-emerald-50", href: "/admin" },
+            ].map((action, i) => (
+              <Link key={i} href={action.href} className="flex flex-col items-center gap-1.5 text-center group">
+                <div className={cn("w-12 h-12 rounded-full flex items-center justify-center transition-transform group-hover:scale-105", action.bg, action.color)}>
+                  <action.icon className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-semibold text-slate-600 leading-tight whitespace-pre-line">
+                  {action.label}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── DESKTOP: Hero ───────────────────────────────────────────────────────── */}
+      <section className="hidden md:block container-page pt-6 sm:pt-8 pb-10 sm:pb-12">
         {featuredEvents.length > 0 ? (
           <HeroCarousel events={featuredEvents} />
         ) : (
@@ -74,16 +129,11 @@ export default async function HomePage() {
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
-          <div className={cn(
-            "grid gap-5 sm:gap-6",
-            liveEvents.length === 1
-              ? "grid-cols-1 max-w-lg"
-              : liveEvents.length === 2
-              ? "grid-cols-1 sm:grid-cols-2 max-w-3xl"
-              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-          )}>
+          <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 hide-scrollbar">
             {liveEvents.map((event) => (
-              <EventCard key={event.id} event={event} />
+              <div key={event.id} className="w-[85vw] sm:w-auto shrink-0 snap-center">
+                <EventCard event={event} />
+              </div>
             ))}
           </div>
         </section>
@@ -109,16 +159,11 @@ export default async function HomePage() {
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
-          <div className={cn(
-            "grid gap-5 sm:gap-6",
-            upcomingEvents.length === 1
-              ? "grid-cols-1 max-w-lg"
-              : upcomingEvents.length === 2
-              ? "grid-cols-1 sm:grid-cols-2 max-w-3xl"
-              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-          )}>
+          <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 hide-scrollbar">
             {upcomingEvents.slice(0, 6).map((event) => (
-              <EventCard key={event.id} event={event} />
+              <div key={event.id} className="w-[85vw] sm:w-auto shrink-0 snap-center">
+                <EventCard event={event} />
+              </div>
             ))}
           </div>
         </section>
@@ -140,16 +185,11 @@ export default async function HomePage() {
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
-          <div className={cn(
-            "grid gap-5 sm:gap-6",
-            latestEvents.length === 1
-              ? "grid-cols-1 max-w-lg"
-              : latestEvents.length === 2
-              ? "grid-cols-1 sm:grid-cols-2 max-w-3xl"
-              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-          )}>
+          <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 hide-scrollbar">
             {latestEvents.slice(0, 6).map((event) => (
-              <EventCard key={event.id} event={event} />
+              <div key={event.id} className="w-[85vw] sm:w-auto shrink-0 snap-center">
+                <EventCard event={event} />
+              </div>
             ))}
           </div>
         </section>
@@ -168,16 +208,11 @@ export default async function HomePage() {
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
-          <div className={cn(
-            "grid gap-5 sm:gap-6",
-            completedEvents.length === 1
-              ? "grid-cols-1 max-w-lg"
-              : completedEvents.length === 2
-              ? "grid-cols-1 sm:grid-cols-2 max-w-3xl"
-              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-          )}>
+          <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 hide-scrollbar">
             {completedEvents.map((event) => (
-              <EventCard key={event.id} event={event} />
+              <div key={event.id} className="w-[85vw] sm:w-auto shrink-0 snap-center">
+                <EventCard event={event} />
+              </div>
             ))}
           </div>
         </section>

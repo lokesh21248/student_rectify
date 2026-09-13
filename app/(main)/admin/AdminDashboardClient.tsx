@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -154,9 +154,9 @@ export function AdminDashboardClient({
     city: "New Delhi",
     state: "Delhi",
     meeting_url: "",
-    start_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
-    end_at: new Date(Date.now() + 172800000).toISOString().slice(0, 16),
-    registration_deadline: new Date(Date.now() + 80000000).toISOString().slice(0, 16),
+    start_at: "",
+    end_at: "",
+    registration_deadline: "",
     max_participants: 500,
     eligibility: "Open to all verified college students with valid student ID.",
     rules: "Standard code of conduct and fair participation rules apply.",

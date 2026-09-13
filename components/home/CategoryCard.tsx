@@ -139,14 +139,14 @@ export function CategoryGrid({ categories, title = "Browse Categories" }: Catego
           </Button>
         </Box>
       )}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4">
+      <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 sm:gap-4 hide-scrollbar">
         {categories.map((cat, i) => (
           <motion.div
             key={cat.id}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.04 }}
-            className="h-full"
+            className="h-full shrink-0 w-[120px] sm:w-auto snap-start"
           >
             <CategoryCard category={cat} />
           </motion.div>
