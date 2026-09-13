@@ -11,39 +11,25 @@ export async function PATCH(
 
     const supabase = createAdminClient();
 
-    // Handle attendance check-in: create an event_attendance record
-    // instead of updating registration status (which has enum constraint)
     if (body.checked_in === true || body.status === "attended") {
-      // First get the registration
-      const { data: reg, error: regFetchError } = await supabase
+      const { data, error } = await supabase
         .from("event_registrations")
-        .select("id, event_id, user_id")
+        .update({ 
+          status: "attended", 
+          checked_in: true, 
+          checked_in_at: new Date().toISOString() 
+        })
         .eq("id", regId)
+        .select()
         .single();
 
-      if (regFetchError || !reg) {
-        return NextResponse.json({ error: "Registration not found" }, { status: 404 });
-      }
-
-      // Check if attendance already recorded
-      const { data: existingAttendance } = await supabase
-        .from("event_attendance")
-        .select("id")
-        .eq("registration_id", regId)
-        .maybeSingle();
-
-      if (!existingAttendance) {
-        // Insert attendance record
-        await supabase.from("event_attendance").insert({
-          event_id: reg.event_id,
-          user_id: reg.user_id,
-          registration_id: reg.id,
-        });
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
       return NextResponse.json({
         success: true,
-        registration: { ...reg, status: "attended", checked_in: true },
+        registration: data,
       });
     }
 
