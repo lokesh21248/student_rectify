@@ -37,7 +37,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, slug, description, icon, color, sort_order, is_active } = body;
+    const { name, slug, description, icon, color, sort_order, is_active, image_url, icon_type } = body;
 
     if (!name || !slug) {
       return NextResponse.json({ error: "Name and slug are required" }, { status: 400 });
@@ -66,6 +66,8 @@ export async function POST(req: NextRequest) {
         color: color || "#6366F1",
         sort_order: sort_order ?? 0,
         is_active: is_active ?? true,
+        image_url: image_url || null,
+        icon_type: icon_type || "icon",
       })
       .select("*")
       .single();

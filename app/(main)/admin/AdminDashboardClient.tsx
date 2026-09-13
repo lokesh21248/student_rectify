@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
+import { AdminCollegesTab } from "@/components/admin/AdminCollegesTab";
 
 // MUI Imports
 import Typography from "@mui/material/Typography";
@@ -701,9 +702,9 @@ export function AdminDashboardClient({
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider">
                   <tr>
                     <th className="py-3 px-4">Event Details</th>
-                    <th className="py-3 px-4">Category & College</th>
-                    <th className="py-3 px-4">Mode / Venue</th>
-                    <th className="py-3 px-4">Dates</th>
+                    <th className="py-3 px-4 hidden md:table-cell">Category & College</th>
+                    <th className="py-3 px-4 hidden lg:table-cell">Mode / Venue</th>
+                    <th className="py-3 px-4 hidden sm:table-cell">Dates</th>
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
@@ -726,7 +727,7 @@ export function AdminDashboardClient({
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 hidden md:table-cell">
                         <p className="font-medium text-slate-800">
                           {evt.categories?.name || evt.category_name || "General"}
                         </p>
@@ -734,13 +735,13 @@ export function AdminDashboardClient({
                           {evt.colleges?.name || evt.college_name || "Host College"}
                         </p>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 hidden lg:table-cell">
                         <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-700 font-medium uppercase text-[10px]">
                           {evt.mode || "offline"}
                         </span>
                         <p className="text-[11px] text-slate-500 truncate mt-0.5">{evt.venue || evt.city || "Campus Auditorium"}</p>
                       </td>
-                      <td className="py-3 px-4 text-slate-600">
+                      <td className="py-3 px-4 text-slate-600 hidden sm:table-cell">
                         <p>{formatDate(evt.start_at, "MMM d, yyyy")}</p>
                         <p className="text-[11px] text-slate-400">{formatDate(evt.start_at, "h:mm a")}</p>
                       </td>
@@ -2240,18 +2241,48 @@ export function AdminDashboardClient({
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Icon (Lucide name)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. cpu, code-2, trophy"
-                      value={editingCategory ? editingCategory.icon : categoryForm.icon}
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Icon Type</label>
+                    <select
+                      value={editingCategory ? (editingCategory.icon_type || "icon") : (categoryForm.icon_type || "icon")}
                       onChange={(e) => editingCategory 
-                        ? setEditingCategory({ ...editingCategory, icon: e.target.value })
-                        : setCategoryForm({ ...categoryForm, icon: e.target.value })
+                        ? setEditingCategory({ ...editingCategory, icon_type: e.target.value as "icon" | "image" })
+                        : setCategoryForm({ ...categoryForm, icon_type: e.target.value as "icon" | "image" })
                       }
-                      className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:border-primary-500 outline-none"
-                    />
+                      className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-primary-500 outline-none"
+                    >
+                      <option value="icon">Lucide Icon</option>
+                      <option value="image">Image URL</option>
+                    </select>
                   </div>
+                  {(editingCategory ? editingCategory.icon_type : categoryForm.icon_type) === "image" ? (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Image URL</label>
+                      <input
+                        type="url"
+                        placeholder="https://.../image.png"
+                        value={editingCategory ? (editingCategory.image_url || "") : (categoryForm.image_url || "")}
+                        onChange={(e) => editingCategory 
+                          ? setEditingCategory({ ...editingCategory, image_url: e.target.value })
+                          : setCategoryForm({ ...categoryForm, image_url: e.target.value })
+                        }
+                        className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-primary-500 outline-none"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Icon (Lucide name)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. cpu, code-2, trophy"
+                        value={editingCategory ? editingCategory.icon : categoryForm.icon}
+                        onChange={(e) => editingCategory 
+                          ? setEditingCategory({ ...editingCategory, icon: e.target.value })
+                          : setCategoryForm({ ...categoryForm, icon: e.target.value })
+                        }
+                        className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:border-primary-500 outline-none"
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">Color (Hex)</label>
                     <div className="flex gap-2">
@@ -2328,10 +2359,14 @@ export function AdminDashboardClient({
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <div 
-                            className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                            style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
+                            className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-slate-100 overflow-hidden"
+                            style={cat.icon_type === "image" ? {} : { backgroundColor: `${cat.color}20`, color: cat.color }}
                           >
-                            <span className="font-bold uppercase">{cat.icon.charAt(0)}</span>
+                            {cat.icon_type === "image" && cat.image_url ? (
+                              <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="font-bold uppercase">{cat.icon?.charAt(0) || "C"}</span>
+                            )}
                           </div>
                           <div>
                             <p className="font-semibold text-slate-900">{cat.name}</p>
@@ -2403,6 +2438,11 @@ export function AdminDashboardClient({
             </div>
           </div>
         </div>
+      )}
+
+      {/* TAB: PARTNER COLLEGES */}
+      {activeTab === "colleges" && (
+        <AdminCollegesTab colleges={colleges} />
       )}
     </div>
   );

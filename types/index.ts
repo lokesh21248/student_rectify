@@ -24,6 +24,11 @@ export interface College {
   country: string;
   website: string | null;
   email: string | null;
+  institution_type: string | null;
+  description: string | null;
+  status: 'active' | 'inactive' | string;
+  featured: boolean;
+  sort_order: number;
   verified: boolean;
   created_at: string;
   updated_at: string;
@@ -72,6 +77,11 @@ export interface Category {
   description: string | null;
   sort_order: number;
   is_active?: boolean;
+  status?: string;
+  featured?: boolean;
+  icon_type?: 'library' | 'upload';
+  icon_url?: string | null;
+  image_url?: string | null;
   created_at: string;
   event_count?: number;
 }

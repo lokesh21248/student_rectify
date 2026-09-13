@@ -133,11 +133,11 @@ function HeroSlide({ event, isActive, theme }: { event: EventWithStatus; isActiv
 
   return (
     <div className="relative flex-[0_0_100%] min-w-0">
-      <div className="grid grid-cols-1 lg:grid-cols-12 items-center gap-6 lg:gap-8 p-6 sm:p-8 md:p-10">
+      <div className="grid grid-cols-1 lg:grid-cols-12 items-center gap-4 sm:gap-6 lg:gap-8 p-4 sm:p-8 md:p-10">
         {/* Left Column: Text & CTAs */}
-        <div className="lg:col-span-7 flex flex-col justify-center">
+        <div className="lg:col-span-7 flex flex-col justify-center order-1">
           {/* Badges */}
-          <div className="flex items-center gap-2.5 mb-3">
+          <div className="flex flex-wrap items-center gap-2.5 mb-3">
             {event.category_name && (
               <Chip 
                 label={event.category_name} 
@@ -216,13 +216,14 @@ function HeroSlide({ event, isActive, theme }: { event: EventWithStatus; isActiv
           </div>
 
           {/* Action CTAs */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 w-full mt-2">
             <Button
               component={Link}
               href={`/events/${event.slug}`}
               variant="contained"
               size="large"
               sx={{
+                width: { xs: "100%", sm: "auto" },
                 borderRadius: "12px",
                 px: 3,
                 py: 1.25,
@@ -239,6 +240,7 @@ function HeroSlide({ event, isActive, theme }: { event: EventWithStatus; isActiv
               size="large"
               endIcon={<ArrowRight size={16} />}
               sx={{
+                width: { xs: "100%", sm: "auto" },
                 borderRadius: "12px",
                 px: 3,
                 py: 1.25,
@@ -258,7 +260,7 @@ function HeroSlide({ event, isActive, theme }: { event: EventWithStatus; isActiv
         </div>
 
         {/* Right Column: Visual in 16:7 / 16:9 Aspect Ratio with Object-Cover */}
-        <div className="lg:col-span-5 flex items-center justify-center">
+        <div className="lg:col-span-5 flex items-center justify-center order-2">
           <div className="relative w-full aspect-[16/9] lg:aspect-[16/11] rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-slate-800">
             {event.banner_url ? (
               <Image

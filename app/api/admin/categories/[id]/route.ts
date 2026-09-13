@@ -10,6 +10,8 @@ const VALID_COLUMNS = new Set([
   "color",
   "sort_order",
   "is_active",
+  "image_url",
+  "icon_type",
 ]);
 
 export async function PATCH(
