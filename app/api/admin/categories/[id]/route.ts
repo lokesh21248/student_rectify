@@ -89,9 +89,15 @@ export async function DELETE(
     }
 
     if (count && count > 0) {
-      return NextResponse.json({ 
-        error: `Cannot delete: This category is currently used by ${count} event(s). Please deactivate it instead.` 
-      }, { status: 400 });
+      // Unlink events instead of blocking deletion
+      const { error: unlinkErr } = await supabase
+        .from("events")
+        .update({ category_id: null })
+        .eq("category_id", categoryId);
+        
+      if (unlinkErr) {
+        return NextResponse.json({ error: "Failed to unlink events from category before deletion" }, { status: 500 });
+      }
     }
 
     const { error } = await supabase
