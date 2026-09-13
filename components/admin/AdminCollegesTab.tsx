@@ -14,7 +14,7 @@ export function AdminCollegesTab({ colleges: initialColleges }: { colleges: any[
     name: "",
     slug: "",
     institution_type: "College",
-    location: "",
+    city: "",
     state: "",
     country: "India",
     logo_url: "",
@@ -38,7 +38,7 @@ export function AdminCollegesTab({ colleges: initialColleges }: { colleges: any[
         name: college.name,
         slug: college.slug,
         institution_type: college.institution_type || "College",
-        location: college.location || "",
+        city: college.city || "",
         state: college.state || "",
         country: college.country || "India",
         logo_url: college.logo_url || "",
@@ -54,7 +54,7 @@ export function AdminCollegesTab({ colleges: initialColleges }: { colleges: any[
         name: "",
         slug: "",
         institution_type: "College",
-        location: "",
+        city: "",
         state: "",
         country: "India",
         logo_url: "",
@@ -258,7 +258,7 @@ export function AdminCollegesTab({ colleges: initialColleges }: { colleges: any[
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">City/Location *</label>
-                <input required type="text" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-primary-500 outline-none" placeholder="e.g. Pilani" />
+                <input required type="text" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-primary-500 outline-none" placeholder="e.g. Pilani" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">State</label>
@@ -387,7 +387,7 @@ export function AdminCollegesTab({ colleges: initialColleges }: { colleges: any[
                   <p className="text-xs text-primary-600 font-medium mb-1">{college.institution_type}</p>
                   <p className="text-xs text-slate-500 flex items-center gap-1 truncate">
                     <MapPin className="w-3 h-3" />
-                    {college.location}{college.state ? `, ${college.state}` : ''}
+                    {college.city}{college.state ? `, ${college.state}` : ''}
                   </p>
                 </div>
               </div>
