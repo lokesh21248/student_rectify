@@ -32,10 +32,9 @@ const footerLinks = {
     { label: "Certificates", href: "/certificates" },
   ],
   Organizers: [
-    { label: "Create Event", href: "/organizer/events/create" },
-    { label: "Organizer Dashboard", href: "/organizer" },
-    { label: "QR Attendance", href: "/organizer/attendance" },
-    { label: "Analytics", href: "/organizer/analytics" },
+    { label: "Create Event", href: "/admin" },
+    { label: "Organizer Dashboard", href: "/admin" },
+    { label: "Manage Attendance", href: "/admin" },
   ],
   Support: [
     { label: "Help Center", href: "/help" },

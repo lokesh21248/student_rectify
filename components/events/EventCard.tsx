@@ -52,10 +52,11 @@ export function EventCard({ event, className = "" }: EventCardProps) {
   };
 
   return (
-    <Link
-      href={`/events/${event.slug}`}
-      className={`group flex flex-col h-full bg-white rounded-2xl border border-slate-200 overflow-hidden hover:border-primary-300 hover:shadow-lg transition-all duration-300 ${className}`}
+    <div
+      className={`group relative flex flex-col h-full bg-white rounded-2xl border border-slate-200 overflow-hidden hover:border-primary-300 hover:shadow-lg transition-all duration-300 ${className}`}
     >
+      <Link href={`/events/${event.slug}`} className="absolute inset-0 z-10" aria-label={`View details for ${event.title}`} />
+      
       {/* 1. IMAGE */}
       <div className="relative aspect-video w-full bg-slate-100 shrink-0 overflow-hidden">
         {event.banner_url ? (
@@ -131,7 +132,7 @@ export function EventCard({ event, className = "" }: EventCardProps) {
             <button
               onClick={handleInterestClick}
               disabled={isLoading}
-              className="flex items-center gap-1.5 group/btn cursor-pointer"
+              className="relative z-20 flex items-center gap-1.5 group/btn cursor-pointer"
               title={isInterested ? "Remove interest" : "Mark as interested"}
             >
               <Heart
@@ -155,10 +156,10 @@ export function EventCard({ event, className = "" }: EventCardProps) {
         </div>
 
         {/* 7. ACTION BUTTON */}
-        <div className="w-full text-center py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl transition-colors">
+        <div className="relative z-0 w-full text-center py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl transition-colors">
           {isLive ? "Join Live Event →" : isUpcoming ? "Register Now" : "View Details"}
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
