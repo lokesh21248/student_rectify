@@ -11,7 +11,9 @@ import {
   getLatestEvents,
   getCompletedEvents,
   getCategories,
+  getUserInterestedEventIds,
 } from "@/lib/supabase/queries";
+import { auth } from "@clerk/nextjs/server";
 
 export default async function HomePage() {
   const [
@@ -29,6 +31,21 @@ export default async function HomePage() {
     getCompletedEvents(6),
     getCategories(),
   ]);
+
+  const { userId } = await auth();
+  const interestedEventIds = await getUserInterestedEventIds(userId);
+
+  const injectInterest = (events: any[]) =>
+    events.map((event) => ({
+      ...event,
+      is_interested: interestedEventIds.has(event.id),
+    }));
+
+  const featuredWithInterest = injectInterest(featuredEvents);
+  const liveWithInterest = injectInterest(liveEvents);
+  const upcomingWithInterest = injectInterest(upcomingEvents);
+  const latestWithInterest = injectInterest(latestEvents);
+  const completedWithInterest = injectInterest(completedEvents);
 
   return (
     <div className="page-enter pb-16">
@@ -89,8 +106,8 @@ export default async function HomePage() {
 
       {/* ── DESKTOP: Hero ───────────────────────────────────────────────────────── */}
       <section className="hidden md:block container-page pt-6 sm:pt-8 pb-10 sm:pb-12">
-        {featuredEvents.length > 0 ? (
-          <HeroCarousel events={featuredEvents} />
+        {featuredWithInterest.length > 0 ? (
+          <HeroCarousel events={featuredWithInterest} />
         ) : (
           <div className="relative rounded-[24px] overflow-hidden bg-gradient-to-r from-blue-600 to-blue-700 p-8 sm:p-12 text-center text-white">
             <h1 className="heading-1 mb-4">Discover College Events</h1>
@@ -130,7 +147,7 @@ export default async function HomePage() {
             </Link>
           </div>
           <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 hide-scrollbar">
-            {liveEvents.map((event) => (
+            {liveWithInterest.map((event) => (
               <div key={event.id} className="w-[85vw] sm:w-auto shrink-0 snap-center">
                 <EventCard event={event} />
               </div>
@@ -160,7 +177,7 @@ export default async function HomePage() {
             </Link>
           </div>
           <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 hide-scrollbar">
-            {upcomingEvents.slice(0, 6).map((event) => (
+            {upcomingWithInterest.slice(0, 6).map((event) => (
               <div key={event.id} className="w-[85vw] sm:w-auto shrink-0 snap-center">
                 <EventCard event={event} />
               </div>
@@ -186,7 +203,7 @@ export default async function HomePage() {
             </Link>
           </div>
           <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 hide-scrollbar">
-            {latestEvents.slice(0, 6).map((event) => (
+            {latestWithInterest.slice(0, 6).map((event) => (
               <div key={event.id} className="w-[85vw] sm:w-auto shrink-0 snap-center">
                 <EventCard event={event} />
               </div>
@@ -209,7 +226,7 @@ export default async function HomePage() {
             </Link>
           </div>
           <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 hide-scrollbar">
-            {completedEvents.map((event) => (
+            {completedWithInterest.map((event) => (
               <div key={event.id} className="w-[85vw] sm:w-auto shrink-0 snap-center">
                 <EventCard event={event} />
               </div>

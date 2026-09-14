@@ -143,6 +143,7 @@ export interface EventWithStatus extends Event {
   registration_count: number;
   interest_count: number;
   attendance_count: number;
+  is_interested?: boolean;
 }
 
 export interface EventImage {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 
 export async function POST(
   req: NextRequest,
@@ -41,6 +42,7 @@ export async function POST(
         .eq("event_id", eventId)
         .eq("user_id", profile.id);
 
+      revalidatePath('/', 'layout');
       return NextResponse.json({ interested: false });
     } else {
       // Add interest
@@ -48,6 +50,7 @@ export async function POST(
         .from("event_interests")
         .insert({ event_id: eventId, user_id: profile.id });
 
+      revalidatePath('/', 'layout');
       return NextResponse.json({ interested: true });
     }
   } catch (error) {

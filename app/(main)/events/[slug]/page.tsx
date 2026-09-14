@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getEventBySlug } from "@/lib/supabase/queries";
+import { getEventBySlug, getUserInterestedEventIds } from "@/lib/supabase/queries";
 import { EventDetailClient } from "./EventDetailClient";
+import { auth } from "@clerk/nextjs/server";
 
 interface EventPageProps {
   params: Promise<{ slug: string }>;
@@ -36,10 +37,19 @@ export default async function EventPage({ params }: EventPageProps) {
 
   if (!event) notFound();
 
-  // Public customer website - no visitor authentication barrier
-  const userId = null;
-  const isRegistered = false;
-  const isInterested = false;
+  // Fetch auth
+  const { userId: clerkUserId } = await auth();
+  
+  let isInterested = false;
+  if (clerkUserId) {
+    const interestedEventIds = await getUserInterestedEventIds(clerkUserId);
+    isInterested = interestedEventIds.has(event.id);
+  }
+
+  // Also pass it inside event for generic components if needed
+  event.is_interested = isInterested;
+
+  const isRegistered = false; // TODO: Implement if needed
   const registrationData = null;
 
   return (
@@ -48,7 +58,7 @@ export default async function EventPage({ params }: EventPageProps) {
       isRegistered={isRegistered}
       isInterested={isInterested}
       registrationData={registrationData}
-      userId={userId}
+      userId={clerkUserId}
     />
   );
 }

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { EventsContent } from "./EventsContent";
-import { getCategories, getEvents } from "@/lib/supabase/queries";
+import { getCategories, getEvents, getUserInterestedEventIds } from "@/lib/supabase/queries";
+import { auth } from "@clerk/nextjs/server";
 
 export const metadata: Metadata = {
   title: "Explore Events",
@@ -40,6 +41,14 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
     }),
   ]);
 
+  const { userId } = await auth();
+  const interestedEventIds = await getUserInterestedEventIds(userId);
+
+  const initialEventsWithInterest = initialEventsData.data.map((event) => ({
+    ...event,
+    is_interested: interestedEventIds.has(event.id),
+  }));
+
   return (
     <div className="container-page py-8 page-enter">
       <div className="mb-6">
@@ -52,7 +61,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         <EventsContent
           searchParams={params}
           categories={categories}
-          initialEvents={initialEventsData.data}
+          initialEvents={initialEventsWithInterest}
           initialTotal={initialEventsData.total}
           initialHasMore={initialEventsData.hasMore}
         />

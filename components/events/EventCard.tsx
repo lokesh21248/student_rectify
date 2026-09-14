@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+import { useAuth, useClerk } from "@clerk/nextjs";
+
 import Link from "next/link";
 import Image from "next/image";
 import { Calendar, MapPin, Users, Heart, Wifi } from "lucide-react";
@@ -18,6 +21,44 @@ export function EventCard({ event, className = "" }: EventCardProps) {
   const status = event.computed_status;
   const isLive = status === "LIVE";
   const isUpcoming = status === "UPCOMING";
+
+  const { userId } = useAuth();
+  const { openSignIn } = useClerk();
+
+  const [isInterested, setIsInterested] = useState(!!event.is_interested);
+  const [interestCount, setInterestCount] = useState(event.interest_count || 0);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleInterestClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!userId) {
+      openSignIn({ redirectUrl: window.location.href });
+      return;
+    }
+
+    if (isLoading) return;
+
+    // Optimistic update
+    setIsLoading(true);
+    const previousState = isInterested;
+    setIsInterested(!previousState);
+    setInterestCount((prev) => (previousState ? Math.max(0, prev - 1) : prev + 1));
+
+    try {
+      const res = await fetch(`/api/events/${event.id}/interest`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to update interest");
+      // The API will trigger revalidatePath so the global cache is cleared
+    } catch (error) {
+      // Revert optimistic update
+      setIsInterested(previousState);
+      setInterestCount((prev) => (previousState ? prev + 1 : Math.max(0, prev - 1)));
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Link
@@ -96,10 +137,19 @@ export function EventCard({ event, className = "" }: EventCardProps) {
         {/* 6. STATS & COUNTDOWN */}
         <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <Heart className="w-3.5 h-3.5 text-rose-500" />
-              <span className="text-xs font-semibold text-slate-600">{formatCount(event.interest_count)}</span>
-            </div>
+            <button
+              onClick={handleInterestClick}
+              disabled={isLoading}
+              className="flex items-center gap-1.5 group/btn cursor-pointer"
+              title={isInterested ? "Remove interest" : "Mark as interested"}
+            >
+              <Heart
+                className={`w-4 h-4 transition-transform duration-200 ${
+                  isLoading ? "opacity-50 animate-pulse" : "group-hover/btn:scale-110"
+                } ${isInterested ? "fill-rose-500 text-rose-500" : "text-rose-500 hover:fill-rose-100"}`}
+              />
+              <span className="text-xs font-semibold text-slate-600">{formatCount(interestCount)}</span>
+            </button>
             <div className="flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-blue-500" />
               <span className="text-xs font-semibold text-slate-600">{formatCount(event.registration_count)}</span>

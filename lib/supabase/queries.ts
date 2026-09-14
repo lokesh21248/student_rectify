@@ -80,12 +80,8 @@ export async function getLiveEvents(): Promise<EventWithStatus[]> {
     const now = new Date().toISOString();
 
     const { data, error } = await supabase
-      .from('events')
-      .select(`
-        *,
-        categories!category_id(id, name, slug, icon, color),
-        colleges!college_id(id, name, slug, logo_url)
-      `)
+      .from('events_with_status')
+      .select('*')
       .eq('status', 'published')
       .eq('approved', true)
       .lte('start_at', now)
@@ -112,12 +108,8 @@ export async function getUpcomingEvents(limit = 9): Promise<EventWithStatus[]> {
     const now = new Date().toISOString();
 
     const { data, error } = await supabase
-      .from('events')
-      .select(`
-        *,
-        categories!category_id(id, name, slug, icon, color),
-        colleges!college_id(id, name, slug, logo_url)
-      `)
+      .from('events_with_status')
+      .select('*')
       .eq('status', 'published')
       .eq('approved', true)
       .gt('start_at', now)
@@ -142,12 +134,8 @@ export async function getLatestEvents(limit = 8): Promise<EventWithStatus[]> {
     const supabase = await createClient();
 
     const { data, error } = await supabase
-      .from('events')
-      .select(`
-        *,
-        categories!category_id(id, name, slug, icon, color),
-        colleges!college_id(id, name, slug, logo_url)
-      `)
+      .from('events_with_status')
+      .select('*')
       .eq('status', 'published')
       .eq('approved', true)
       .order('created_at', { ascending: false })
@@ -172,12 +160,8 @@ export async function getCompletedEvents(limit = 6): Promise<EventWithStatus[]> 
     const now = new Date().toISOString();
 
     const { data, error } = await supabase
-      .from('events')
-      .select(`
-        *,
-        categories!category_id(id, name, slug, icon, color),
-        colleges!college_id(id, name, slug, logo_url)
-      `)
+      .from('events_with_status')
+      .select('*')
       .eq('status', 'published')
       .eq('approved', true)
       .lt('end_at', now)
@@ -220,12 +204,8 @@ export async function getEvents(
     const supabase = await createClient();
 
     let query = supabase
-      .from('events')
-      .select(`
-        *,
-        categories!category_id(id, name, slug, icon, color),
-        colleges!college_id(id, name, slug, logo_url)
-      `, { count: 'exact' })
+      .from('events_with_status')
+      .select('*', { count: 'exact' })
       .eq('status', 'published')
       .eq('approved', true);
 
@@ -564,28 +544,60 @@ function transformEvent(event: any): EventWithStatus {
   const start = new Date(event.start_at as string);
   const end = new Date(event.end_at as string);
 
-  let computed_status: string;
-  if (event.status === 'cancelled') computed_status = 'CANCELLED';
-  else if (event.status === 'draft') computed_status = 'DRAFT';
-  else if (!event.approved) computed_status = 'PENDING';
-  else if (now < start) computed_status = 'UPCOMING';
-  else if (now >= start && now <= end) computed_status = 'LIVE';
-  else computed_status = 'COMPLETED';
+  let computed_status: string = event.computed_status;
+  if (!computed_status) {
+    if (event.status === 'cancelled') computed_status = 'CANCELLED';
+    else if (event.status === 'draft') computed_status = 'DRAFT';
+    else if (!event.approved) computed_status = 'PENDING';
+    else if (now < start) computed_status = 'UPCOMING';
+    else if (now >= start && now <= end) computed_status = 'LIVE';
+    else computed_status = 'COMPLETED';
+  }
 
   return {
     ...(event as unknown as EventWithStatus),
-    category_name: cats?.name ?? null,
-    category_slug: cats?.slug ?? null,
-    category_icon: cats?.icon ?? null,
-    category_color: cats?.color ?? null,
-    college_name: college?.name ?? null,
-    college_slug: college?.slug ?? null,
-    college_logo_url: college?.logo_url ?? null,
-    organizer_name: org?.display_name ?? null,
-    organizer_avatar_url: org?.avatar_url ?? null,
+    category_name: event.category_name ?? cats?.name ?? null,
+    category_slug: event.category_slug ?? cats?.slug ?? null,
+    category_icon: event.category_icon ?? cats?.icon ?? null,
+    category_color: event.category_color ?? cats?.color ?? null,
+    college_name: event.college_name ?? college?.name ?? null,
+    college_slug: event.college_slug ?? college?.slug ?? null,
+    college_logo_url: event.college_logo_url ?? college?.logo_url ?? null,
+    organizer_name: event.organizer_name ?? org?.display_name ?? null,
+    organizer_avatar_url: event.organizer_avatar_url ?? org?.avatar_url ?? null,
     computed_status: computed_status as EventWithStatus['computed_status'],
-    registration_count: 0,
-    interest_count: 0,
-    attendance_count: 0,
+    registration_count: event.registration_count ?? 0,
+    interest_count: event.interest_count ?? 0,
+    attendance_count: event.attendance_count ?? 0,
   };
+}
+
+/**
+ * Get the set of event IDs that the current user is interested in.
+ */
+export async function getUserInterestedEventIds(clerkUserId: string | null): Promise<Set<string>> {
+  if (!clerkUserId) return new Set();
+
+  try {
+    const supabase = createAdminClient();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('clerk_user_id', clerkUserId)
+      .single();
+
+    if (!profile) return new Set();
+
+    const { data } = await supabase
+      .from('event_interests')
+      .select('event_id')
+      .eq('user_id', profile.id);
+
+    if (!data) return new Set();
+
+    return new Set(data.map(d => d.event_id));
+  } catch (err) {
+    console.error('Error fetching user interests:', err);
+    return new Set();
+  }
 }
