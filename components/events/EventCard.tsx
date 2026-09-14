@@ -119,7 +119,7 @@ export function EventCard({ event, className = "" }: EventCardProps) {
         <div className="space-y-2 mb-5 text-slate-600">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-primary-600" />
-            <span className="text-xs font-medium truncate">
+            <span suppressHydrationWarning className="text-xs font-medium truncate">
               {formatDate(event.start_at)} · {formatTime(event.start_at)}
             </span>
           </div>

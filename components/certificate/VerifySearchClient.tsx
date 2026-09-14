@@ -171,7 +171,7 @@ export function VerifySearchClient() {
               </div>
               <div>
                 <p className="text-xs text-slate-400 font-medium">Issue Date</p>
-                <p className="text-sm font-semibold text-slate-900">
+                <p suppressHydrationWarning className="text-sm font-semibold text-slate-900">
                   {result.issued_at || result.issue_date || result.created_at
                     ? formatDate(result.issued_at || result.issue_date || result.created_at, "MMMM d, yyyy")
                     : "September 12, 2026"}

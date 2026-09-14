@@ -201,7 +201,7 @@ function HeroSlide({ event, isActive, theme }: { event: EventWithStatus; isActiv
             )}
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10">
               <Calendar className="w-3.5 h-3.5" style={{ color: theme.palette.primary.light }} />
-              <span>{formatDate(event.start_at)} · {formatTime(event.start_at)}</span>
+              <span suppressHydrationWarning>{formatDate(event.start_at)} · {formatTime(event.start_at)}</span>
             </div>
             {event.venue && (
               <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10">
