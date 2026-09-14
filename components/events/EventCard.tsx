@@ -34,7 +34,7 @@ export function EventCard({ event, className = "" }: EventCardProps) {
     e.stopPropagation();
 
     if (!userId) {
-      openSignIn({ redirectUrl: window.location.href });
+      openSignIn();
       return;
     }
 

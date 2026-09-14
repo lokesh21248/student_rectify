@@ -595,7 +595,7 @@ export async function getUserInterestedEventIds(clerkUserId: string | null): Pro
 
     if (!data) return new Set();
 
-    return new Set(data.map(d => d.event_id));
+    return new Set(data.map((d: any) => d.event_id));
   } catch (err) {
     console.error('Error fetching user interests:', err);
     return new Set();
