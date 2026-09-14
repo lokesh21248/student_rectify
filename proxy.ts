@@ -16,7 +16,19 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     }
   }
 
-  return NextResponse.next();
+  const res = NextResponse.next();
+
+  // Assign an anonymous visitor ID if one doesn't exist
+  if (!req.cookies.has("visitor_id")) {
+    res.cookies.set("visitor_id", crypto.randomUUID(), {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+      httpOnly: true,
+      sameSite: "lax",
+    });
+  }
+
+  return res;
 });
 
 export const config = {

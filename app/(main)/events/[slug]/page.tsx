@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getEventBySlug, getUserInterestedEventIds } from "@/lib/supabase/queries";
 import { EventDetailClient } from "./EventDetailClient";
 import { auth } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
 
 interface EventPageProps {
   params: Promise<{ slug: string }>;
@@ -39,10 +40,12 @@ export default async function EventPage({ params }: EventPageProps) {
 
   // Fetch auth
   const { userId: clerkUserId } = await auth();
+  const cookieStore = await cookies();
+  const visitorId = cookieStore.get("visitor_id")?.value || null;
   
   let isInterested = false;
-  if (clerkUserId) {
-    const interestedEventIds = await getUserInterestedEventIds(clerkUserId);
+  if (visitorId) {
+    const interestedEventIds = await getUserInterestedEventIds(visitorId);
     isInterested = interestedEventIds.has(event.id);
   }
 

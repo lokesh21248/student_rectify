@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth, useClerk } from "@clerk/nextjs";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -22,9 +21,6 @@ export function EventCard({ event, className = "" }: EventCardProps) {
   const isLive = status === "LIVE";
   const isUpcoming = status === "UPCOMING";
 
-  const { userId } = useAuth();
-  const { openSignIn } = useClerk();
-
   const [isInterested, setIsInterested] = useState(!!event.is_interested);
   const [interestCount, setInterestCount] = useState(event.interest_count || 0);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,11 +28,6 @@ export function EventCard({ event, className = "" }: EventCardProps) {
   const handleInterestClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    if (!userId) {
-      openSignIn();
-      return;
-    }
 
     if (isLoading) return;
 

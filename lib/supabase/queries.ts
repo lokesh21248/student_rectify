@@ -510,22 +510,16 @@ export async function checkUserRegistration(eventId: string, clerkUserId: string
 /**
  * Check if a user has marked interest in an event.
  */
-export async function checkUserInterest(eventId: string, clerkUserId: string) {
+export async function checkUserInterest(eventId: string, visitorId: string | null) {
+  if (!visitorId) return false;
+
   const supabase = createAdminClient();
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('clerk_user_id', clerkUserId)
-    .single();
-
-  if (!profile) return false;
 
   const { data } = await supabase
     .from('event_interests')
     .select('id')
     .eq('event_id', eventId)
-    .eq('user_id', profile.id)
+    .eq('user_email', visitorId)
     .single();
 
   return !!data;
@@ -573,31 +567,24 @@ function transformEvent(event: any): EventWithStatus {
 }
 
 /**
- * Get the set of event IDs that the current user is interested in.
+ * Get the set of event IDs that the current visitor is interested in.
  */
-export async function getUserInterestedEventIds(clerkUserId: string | null): Promise<Set<string>> {
-  if (!clerkUserId) return new Set();
+export async function getUserInterestedEventIds(visitorId: string | null): Promise<Set<string>> {
+  if (!visitorId) return new Set();
 
   try {
     const supabase = createAdminClient();
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('clerk_user_id', clerkUserId)
-      .single();
-
-    if (!profile) return new Set();
 
     const { data } = await supabase
       .from('event_interests')
       .select('event_id')
-      .eq('user_id', profile.id);
+      .eq('user_email', visitorId);
 
     if (!data) return new Set();
 
     return new Set(data.map((d: any) => d.event_id));
   } catch (err) {
-    console.error('Error fetching user interests:', err);
+    console.error('Error fetching visitor interests:', err);
     return new Set();
   }
 }

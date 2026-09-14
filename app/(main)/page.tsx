@@ -13,7 +13,7 @@ import {
   getCategories,
   getUserInterestedEventIds,
 } from "@/lib/supabase/queries";
-import { auth } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
 
 export default async function HomePage() {
   const [
@@ -32,8 +32,9 @@ export default async function HomePage() {
     getCategories(),
   ]);
 
-  const { userId } = await auth();
-  const interestedEventIds = await getUserInterestedEventIds(userId);
+  const cookieStore = await cookies();
+  const visitorId = cookieStore.get("visitor_id")?.value || null;
+  const interestedEventIds = await getUserInterestedEventIds(visitorId);
 
   const injectInterest = (events: any[]) =>
     events.map((event) => ({

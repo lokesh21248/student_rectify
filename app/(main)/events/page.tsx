@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { EventsContent } from "./EventsContent";
 import { getCategories, getEvents, getUserInterestedEventIds } from "@/lib/supabase/queries";
-import { auth } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
 
 export const metadata: Metadata = {
   title: "Explore Events",
@@ -41,8 +41,9 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
     }),
   ]);
 
-  const { userId } = await auth();
-  const interestedEventIds = await getUserInterestedEventIds(userId);
+  const cookieStore = await cookies();
+  const visitorId = cookieStore.get("visitor_id")?.value || null;
+  const interestedEventIds = await getUserInterestedEventIds(visitorId);
 
   const initialEventsWithInterest = initialEventsData.data.map((event) => ({
     ...event,

@@ -111,10 +111,20 @@ export function EventDetailClient({
 
   // Interest toggle
   async function handleInterest() {
+    const previousState = isInterested;
     const next = !isInterested;
     setIsInterested(next);
     setInterestCount((c: number) => c + (next ? 1 : -1));
-    toast.success(next ? "Marked as interested!" : "Removed from interested");
+    
+    try {
+      const res = await fetch(`/api/events/${event.id}/interest`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to update interest");
+      toast.success(next ? "Marked as interested!" : "Removed from interested");
+    } catch (err) {
+      setIsInterested(previousState);
+      setInterestCount((c: number) => c + (previousState ? 1 : -1));
+      toast.error("Unable to update interest. Please try again.");
+    }
   }
 
   async function handleShare() {
