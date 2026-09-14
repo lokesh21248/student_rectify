@@ -37,21 +37,29 @@ interface CategoryCardProps {
 export function CategoryCard({ category, className }: CategoryCardProps) {
   const theme = useTheme();
   const Icon = iconMap[category.icon] || MoreHorizontal;
+  const hasImage = !!category.image_url;
 
   return (
     <Card 
       elevation={0}
+      className={className}
       sx={{ 
         height: "100%", 
-        minHeight: "140px",
+        minHeight: "170px",
         borderRadius: "16px", 
         border: "1px solid",
         borderColor: "divider",
         transition: "all 0.2s ease-in-out",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
         "&:hover": {
           borderColor: theme.palette.primary.light,
           boxShadow: theme.shadows[2],
           transform: "translateY(-3px)",
+          "& .category-img": {
+            transform: "scale(1.04)"
+          }
         }
       }}
     >
@@ -62,49 +70,67 @@ export function CategoryCard({ category, className }: CategoryCardProps) {
           height: "100%", 
           display: "flex", 
           flexDirection: "column", 
-          alignItems: "center", 
-          justifyContent: "space-between",
-          p: 2
+          alignItems: "stretch", 
+          justifyContent: "flex-start",
         }}
       >
-        {/* Icon */}
+        {/* Top Image or Placeholder */}
         <Box 
           sx={{ 
-            width: 44, 
-            height: 44, 
-            borderRadius: "12px", 
-            backgroundColor: theme.palette.primary.main + "15", // 15% opacity
-            color: theme.palette.primary.main,
+            width: "100%", 
+            height: "90px", 
+            position: "relative",
+            backgroundColor: hasImage ? "transparent" : theme.palette.primary.main + "10",
             display: "flex", 
             alignItems: "center", 
             justifyContent: "center",
-            mb: 1
+            overflow: "hidden",
+            flexShrink: 0,
+            borderBottom: "1px solid",
+            borderColor: "divider",
           }}
         >
-          <Icon size={20} />
+          {hasImage ? (
+            <img 
+              src={category.image_url!} 
+              alt={category.name}
+              className="category-img"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                transition: "transform 0.3s ease",
+              }}
+            />
+          ) : (
+            <Icon size={32} style={{ color: theme.palette.primary.main }} />
+          )}
         </Box>
 
-        {/* Title */}
-        <Box sx={{ height: 36, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", width: "100%" }}>
-          <Typography 
-            variant="subtitle2" 
-            sx={{ 
-              fontWeight: 700, 
-              lineHeight: 1.2,
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden"
-            }}
-          >
-            {category.name}
+        {/* Bottom Content */}
+        <Box sx={{ p: 2, display: "flex", flexDirection: "column", flexGrow: 1, justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
+            <Typography 
+              variant="subtitle2" 
+              sx={{ 
+                fontWeight: 700, 
+                lineHeight: 1.2,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                color: "text.primary"
+              }}
+            >
+              {category.name}
+            </Typography>
+            <ArrowRight size={14} style={{ color: theme.palette.primary.main, flexShrink: 0, marginTop: "2px" }} />
+          </Box>
+
+          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600, mt: 1 }}>
+            {category.event_count !== undefined ? `${category.event_count} ${category.event_count === 1 ? "event" : "events"}` : "Explore"}
           </Typography>
         </Box>
-
-        {/* Event Count */}
-        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600, mt: 0.5 }}>
-          {category.event_count !== undefined ? `${category.event_count} ${category.event_count === 1 ? "event" : "events"}` : "Explore"}
-        </Typography>
       </CardActionArea>
     </Card>
   );
