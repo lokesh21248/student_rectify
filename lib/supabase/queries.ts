@@ -256,13 +256,8 @@ export async function getEventBySlug(slug: string) {
     const supabase = await createClient();
 
     const { data: event, error } = await supabase
-      .from('events')
-      .select(`
-        *,
-        categories!category_id(id, name, slug, icon, color),
-        colleges!college_id(id, name, slug, logo_url, city, state, website),
-        organizers!organizer_id(id, name, photo_url, organization_name, college_name, designation, email, phone, website, linkedin, instagram, description)
-      `)
+      .from('events_with_status')
+      .select('*')
       .eq('slug', slug)
       .single();
 
@@ -279,17 +274,6 @@ export async function getEventBySlug(slug: string) {
         .eq('event_id', event.id)
         .order('sort_order');
 
-      const [registrationRes, interestRes] = await Promise.all([
-        supabase.from('event_registrations').select('id', { count: 'exact', head: true }).eq('event_id', event.id).in('status', ['registered', 'attended', 'confirmed']),
-        supabase.from('event_interests').select('id', { count: 'exact', head: true }).eq('event_id', event.id),
-      ]);
-
-      const { count: attendanceCount } = await supabase
-        .from('event_registrations')
-        .select('id', { count: 'exact', head: true })
-        .eq('event_id', event.id)
-        .or('checked_in.eq.true,status.eq.attended');
-
       const { data: results } = await supabase
         .from('event_results')
         .select('*, profiles!user_id(name, avatar_url)')
@@ -301,9 +285,6 @@ export async function getEventBySlug(slug: string) {
         schedule: schedule || [],
         images: images || [],
         results: results || [],
-        registration_count: registrationRes.count ?? 0,
-        interest_count: interestRes.count ?? 0,
-        attendance_count: attendanceCount ?? 0,
       };
     }
   } catch (err) {
