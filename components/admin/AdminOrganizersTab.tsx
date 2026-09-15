@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search, Edit, Trash2, Globe, Linkedin, Instagram, User, Mail, Phone, Loader2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Globe, Link2, User, Mail, Phone, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ImageUpload } from "./ImageUpload";
 import Image from "next/image";
@@ -239,7 +239,7 @@ export function AdminOrganizersTab({ organizers, setOrganizers }: AdminOrganizer
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1">LinkedIn Profile</label>
                 <div className="relative">
-                  <Linkedin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Link2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="url"
                     value={formData.linkedin || ""}
@@ -252,7 +252,7 @@ export function AdminOrganizersTab({ organizers, setOrganizers }: AdminOrganizer
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Instagram Handle/URL</label>
                 <div className="relative">
-                  <Instagram className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Link2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={formData.instagram || ""}
@@ -366,12 +366,12 @@ export function AdminOrganizersTab({ organizers, setOrganizers }: AdminOrganizer
               )}
               {org.linkedin && (
                 <a href={org.linkedin} target="_blank" rel="noreferrer" className="p-1.5 bg-slate-50 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                  <Linkedin className="w-4 h-4" />
+                  <Link2 className="w-4 h-4" />
                 </a>
               )}
               {org.instagram && (
                 <a href={org.instagram} target="_blank" rel="noreferrer" className="p-1.5 bg-slate-50 text-slate-500 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
-                  <Instagram className="w-4 h-4" />
+                  <Link2 className="w-4 h-4" />
                 </a>
               )}
               {(!org.website && !org.linkedin && !org.instagram) && (

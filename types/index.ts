@@ -172,7 +172,6 @@ export interface Gallery {
   created_at: string;
   updated_at: string;
   event?: EventWithStatus;
-  gallery_date: string;
   media_count?: number;
   photo_count?: number;
   video_count?: number;

@@ -546,7 +546,7 @@ function transformEvent(event: any): EventWithStatus {
     college_logo_url: event.college_logo_url ?? college?.logo_url ?? null,
     // Admin portal data uses related records for organizers/colleges directly in the join
     organizer_id: event.organizer_id || (event as any).organizer?.id || null,
-    organizer: event.organizers ?? null,
+    ...( { organizer: event.organizers ?? null } as any),
     organizer_name: event.organizer_name_real ?? event.organizer_name ?? org?.name ?? org?.display_name ?? null,
     organizer_avatar_url: event.organizer_avatar_url ?? org?.photo_url ?? org?.avatar_url ?? null,
     computed_status: computed_status as EventWithStatus['computed_status'],

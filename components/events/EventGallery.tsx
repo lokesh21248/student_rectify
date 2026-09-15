@@ -15,6 +15,7 @@ interface EventGalleryProps {
     thumbnail_url?: string | null;
     caption?: string | null;
     title?: string | null;
+    description?: string | null;
     media_type?: string;
   }>;
 }
