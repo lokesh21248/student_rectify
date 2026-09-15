@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
 import { AdminCollegesTab } from "@/components/admin/AdminCollegesTab";
 import { AdminCategoriesTab } from "@/components/admin/AdminCategoriesTab";
+import { AdminOrganizersTab } from "@/components/admin/AdminOrganizersTab";
 
 // MUI Imports
 import Typography from "@mui/material/Typography";
@@ -70,10 +71,11 @@ export function AdminDashboardClient({
   const router = useRouter();
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState<
-    "events" | "create" | "banners" | "services" | "colleges" | "registrations" | "certificates" | "storage" | "categories"
+    "events" | "create" | "banners" | "services" | "colleges" | "registrations" | "certificates" | "storage" | "categories" | "organizers"
   >("banners");
 
   const [localCategories, setLocalCategories] = useState(categories);
+  const [localOrganizers, setLocalOrganizers] = useState(organizers);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any | null>(null);
   const [categoryForm, setCategoryForm] = useState({
@@ -635,6 +637,7 @@ export function AdminDashboardClient({
             { id: "events", label: "Events", count: events.length },
             { id: "create", label: "Create Event" },
             { id: "categories", label: "Categories", count: localCategories.length },
+            { id: "organizers", label: "Organizers", count: localOrganizers.length },
             { id: "storage", label: "Storage Uploads", count: uploadedFiles.length },
             { id: "colleges", label: "Partner Colleges", count: colleges.length },
             { id: "registrations", label: "Registrations", count: registrations.length },
@@ -656,6 +659,11 @@ export function AdminDashboardClient({
           ))}
         </Tabs>
       </Box>
+
+      {/* TAB 1: EVENTS LIST & ACTIONS */}
+      {activeTab === "organizers" && (
+        <AdminOrganizersTab organizers={localOrganizers} setOrganizers={setLocalOrganizers} />
+      )}
 
       {/* TAB 1: EVENTS LIST & ACTIONS */}
       {activeTab === "events" && (

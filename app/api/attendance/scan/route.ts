@@ -82,32 +82,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Check duplicate attendance
-    const { data: existingAttendance } = await supabase
-      .from("event_attendance")
-      .select("id, checked_in_at")
-      .eq("event_id", eventId)
-      .eq("user_id", participantUserId)
-      .single();
-
-    if (existingAttendance) {
+    if (registration.checked_in) {
       return NextResponse.json({
         error: "Already checked in",
         alreadyCheckedIn: true,
-        checkedInAt: existingAttendance.checked_in_at,
+        checkedInAt: registration.checked_in_at,
         participant: registration.profiles,
       }, { status: 409 });
     }
 
     // Record attendance
     const { data: attendance, error: attError } = await supabase
-      .from("event_attendance")
-      .insert({
-        event_id: eventId,
-        user_id: participantUserId,
-        registration_id: registrationId,
-        checked_in_by: scannerProfile.id,
+      .from("event_registrations")
+      .update({
+        checked_in: true,
+        status: 'attended',
+        checked_in_at: new Date().toISOString()
       })
+      .eq("id", registrationId)
       .select("*")
       .single();
 

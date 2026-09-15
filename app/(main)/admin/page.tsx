@@ -30,6 +30,7 @@ export default async function AdminPage() {
     regularCertsRes,
     bannersRes,
     servicesRes,
+    organizersRes,
   ] = await Promise.all([
     supabase
       .from("events")
@@ -46,6 +47,7 @@ export default async function AdminPage() {
     supabase.from("certificates").select("*").order("created_at", { ascending: false }).limit(50),
     supabase.from("banners").select("*").order("sort_order"),
     supabase.from("services").select("*, categories!category_id(id, name)").order("sort_order"),
+    supabase.from("organizers").select("*").order("name"),
   ]);
 
   // Use live data if present, or provide seamless fallback
@@ -65,6 +67,7 @@ export default async function AdminPage() {
   ];
   const banners = bannersRes.data || [];
   const services = servicesRes.data || [];
+  const organizers = organizersRes?.data || [];
 
   const now = new Date().toISOString();
   const liveCount = rawEvents.filter((e: any) => e.start_at <= now && e.end_at >= now).length;
@@ -90,6 +93,7 @@ export default async function AdminPage() {
       certificates={certificates}
       banners={banners}
       services={services}
+      organizers={organizers}
     />
   );
 }

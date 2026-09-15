@@ -51,9 +51,10 @@ export async function POST(req: NextRequest) {
 
     // Get all attendees who don't have certificates yet
     const { data: attendees } = await supabase
-      .from("event_attendance")
-      .select("user_id, registration_id")
-      .eq("event_id", eventId);
+      .from("event_registrations")
+      .select("user_id, id as registration_id")
+      .eq("event_id", eventId)
+      .eq("checked_in", true);
 
     if (!attendees || attendees.length === 0) {
       return NextResponse.json({ message: "No attendees to issue certificates to", count: 0 });

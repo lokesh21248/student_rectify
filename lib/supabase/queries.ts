@@ -260,7 +260,8 @@ export async function getEventBySlug(slug: string) {
       .select(`
         *,
         categories!category_id(id, name, slug, icon, color),
-        colleges!college_id(id, name, slug, logo_url, city, state, website)
+        colleges!college_id(id, name, slug, logo_url, city, state, website),
+        organizers!organizer_id(id, name, photo_url, organization_name, college_name, designation, email, phone, website, linkedin, instagram, description)
       `)
       .eq('slug', slug)
       .single();
@@ -278,11 +279,16 @@ export async function getEventBySlug(slug: string) {
         .eq('event_id', event.id)
         .order('sort_order');
 
-      const [registrationRes, interestRes, attendanceRes] = await Promise.all([
-        supabase.from('event_registrations').select('id', { count: 'exact', head: true }).eq('event_id', event.id).eq('status', 'registered'),
+      const [registrationRes, interestRes] = await Promise.all([
+        supabase.from('event_registrations').select('id', { count: 'exact', head: true }).eq('event_id', event.id).in('status', ['registered', 'attended', 'confirmed']),
         supabase.from('event_interests').select('id', { count: 'exact', head: true }).eq('event_id', event.id),
-        supabase.from('event_attendance').select('id', { count: 'exact', head: true }).eq('event_id', event.id),
       ]);
+
+      const { count: attendanceCount } = await supabase
+        .from('event_registrations')
+        .select('id', { count: 'exact', head: true })
+        .eq('event_id', event.id)
+        .or('checked_in.eq.true,status.eq.attended');
 
       const { data: results } = await supabase
         .from('event_results')
@@ -297,7 +303,7 @@ export async function getEventBySlug(slug: string) {
         results: results || [],
         registration_count: registrationRes.count ?? 0,
         interest_count: interestRes.count ?? 0,
-        attendance_count: attendanceRes.count ?? 0,
+        attendance_count: attendanceCount ?? 0,
       };
     }
   } catch (err) {
@@ -557,8 +563,9 @@ function transformEvent(event: any): EventWithStatus {
     college_name: event.college_name ?? college?.name ?? null,
     college_slug: event.college_slug ?? college?.slug ?? null,
     college_logo_url: event.college_logo_url ?? college?.logo_url ?? null,
-    organizer_name: event.organizer_name ?? org?.display_name ?? null,
-    organizer_avatar_url: event.organizer_avatar_url ?? org?.avatar_url ?? null,
+    organizer: event.organizers ?? null,
+    organizer_name: event.organizer_name_real ?? event.organizer_name ?? org?.name ?? org?.display_name ?? null,
+    organizer_avatar_url: event.organizer_avatar_url ?? org?.photo_url ?? org?.avatar_url ?? null,
     computed_status: computed_status as EventWithStatus['computed_status'],
     registration_count: event.registration_count ?? 0,
     interest_count: event.interest_count ?? 0,
