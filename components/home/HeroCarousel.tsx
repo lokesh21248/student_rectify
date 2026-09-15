@@ -215,6 +215,25 @@ function HeroSlide({ event, isActive, theme }: { event: EventWithStatus; isActiv
             </div>
           </div>
 
+          {/* Organizer Pill */}
+          {(event.organizers || event.organizer_name) && (
+            <div className="flex items-center gap-2 mb-5">
+              <span className="text-xs text-white/60 font-medium">Organized by</span>
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+                {event.organizers?.photo_url || event.organizer_avatar_url ? (
+                  <img src={event.organizers?.photo_url || event.organizer_avatar_url || ""} alt="Organizer" className="w-5 h-5 rounded-full object-cover" />
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center text-[10px] font-bold text-white">
+                    {(event.organizers?.name || event.organizer_name || "O")[0].toUpperCase()}
+                  </div>
+                )}
+                <span className="text-xs text-white/90 font-medium pr-1 truncate max-w-[150px]">
+                  {event.organizers?.name || event.organizer_name}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Action CTAs */}
           <div className="flex flex-wrap items-center gap-3 w-full mt-2">
             <Button

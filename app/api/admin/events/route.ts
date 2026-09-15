@@ -11,7 +11,8 @@ export async function GET() {
       .select(`
         *,
         categories!category_id(id, name, slug, icon, color),
-        colleges!college_id(id, name, slug, logo_url)
+        colleges!college_id(id, name, slug, logo_url),
+        organizers!organizer_id(id, name, email, designation, photo_url)
       `)
       .order("created_at", { ascending: false });
 
@@ -36,6 +37,9 @@ export async function POST(req: NextRequest) {
       category_id,
       college_id,
       organizer_name,
+      organizer_email,
+      organizer_designation,
+      organizer_photo_url,
       mode = "offline",
       venue,
       address,
@@ -65,7 +69,46 @@ export async function POST(req: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // 1. Skip organizer logic entirely since the column is missing in the user's Supabase schema
+    // 1. Organizer logic: Upsert into organizers table if organizer_name is provided
+    let final_organizer_id = null;
+    if (organizer_name) {
+      let orgQuery = supabase.from("organizers").select("id");
+      if (organizer_email) {
+        orgQuery = orgQuery.eq("email", organizer_email);
+      } else {
+        orgQuery = orgQuery.eq("name", organizer_name);
+      }
+      
+      const { data: existingOrg } = await orgQuery.maybeSingle();
+      
+      if (existingOrg) {
+        const { data: updatedOrg } = await supabase
+          .from("organizers")
+          .update({
+            name: organizer_name,
+            email: organizer_email || null,
+            designation: organizer_designation || null,
+            photo_url: organizer_photo_url || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingOrg.id)
+          .select("id")
+          .single();
+        final_organizer_id = updatedOrg?.id;
+      } else {
+        const { data: newOrg } = await supabase
+          .from("organizers")
+          .insert({
+            name: organizer_name,
+            email: organizer_email || null,
+            designation: organizer_designation || null,
+            photo_url: organizer_photo_url || null,
+          })
+          .select("id")
+          .single();
+        final_organizer_id = newOrg?.id;
+      }
+    }
     
     // 2. Ensure unique slug
     let slug = rawSlug || generateSlug(title);
@@ -87,6 +130,7 @@ export async function POST(req: NextRequest) {
       description: description || null,
       category_id,
       college_id,
+      organizer_id: final_organizer_id,
       organizer_name: organizer_name || null,
       mode,
       venue: venue || null,

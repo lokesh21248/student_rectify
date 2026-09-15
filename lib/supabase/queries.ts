@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/server';
+import { unstable_cache } from 'next/cache';
+import { createClient, createAdminClient, createPublicClient } from '@/lib/supabase/server';
 import {
   EventWithStatus,
   EventFilters,
@@ -49,134 +49,154 @@ function filterMockEvents(filters: EventFilters): PaginatedResponse<EventWithSta
 /**
  * Get featured/hero events (featured and published).
  */
-export async function getFeaturedEvents(): Promise<EventWithStatus[]> {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from('events_with_status')
-      .select('*')
-      .eq('status', 'published')
-      .eq('approved', true)
-      .eq('featured', true)
-      .in('computed_status', ['UPCOMING', 'LIVE'])
-      .order('start_at', { ascending: true })
-      .limit(6);
+export const getFeaturedEvents = unstable_cache(
+  async (): Promise<EventWithStatus[]> => {
+    try {
+      const supabase = createPublicClient();
+      const { data, error } = await supabase
+        .from('events_with_status')
+        .select('*')
+        .eq('status', 'published')
+        .eq('approved', true)
+        .eq('featured', true)
+        .in('computed_status', ['UPCOMING', 'LIVE'])
+        .order('start_at', { ascending: true })
+        .limit(6);
 
-    if (error || !data || data.length === 0) {
+      if (error || !data || data.length === 0) {
+        return MOCK_EVENTS.filter((e) => e.featured);
+      }
+      return data;
+    } catch {
       return MOCK_EVENTS.filter((e) => e.featured);
     }
-    return data;
-  } catch {
-    return MOCK_EVENTS.filter((e) => e.featured);
-  }
-}
+  },
+  ['featured-events'],
+  { revalidate: 60 }
+);
 
 /**
  * Get currently live events.
  */
-export async function getLiveEvents(): Promise<EventWithStatus[]> {
-  try {
-    const supabase = await createClient();
-    const now = new Date().toISOString();
+export const getLiveEvents = unstable_cache(
+  async (): Promise<EventWithStatus[]> => {
+    try {
+      const supabase = createPublicClient();
+      const now = new Date().toISOString();
 
-    const { data, error } = await supabase
-      .from('events_with_status')
-      .select('*')
-      .eq('status', 'published')
-      .eq('approved', true)
-      .lte('start_at', now)
-      .gte('end_at', now)
-      .order('start_at', { ascending: false })
-      .limit(6);
+      const { data, error } = await supabase
+        .from('events_with_status')
+        .select('*')
+        .eq('status', 'published')
+        .eq('approved', true)
+        .lte('start_at', now)
+        .gte('end_at', now)
+        .order('start_at', { ascending: false })
+        .limit(6);
 
-    if (error || !data || data.length === 0) {
+      if (error || !data || data.length === 0) {
+        return MOCK_EVENTS.filter((e) => e.computed_status === 'LIVE');
+      }
+
+      return (data || []).map(transformEvent);
+    } catch {
       return MOCK_EVENTS.filter((e) => e.computed_status === 'LIVE');
     }
-
-    return (data || []).map(transformEvent);
-  } catch {
-    return MOCK_EVENTS.filter((e) => e.computed_status === 'LIVE');
-  }
-}
+  },
+  ['live-events'],
+  { revalidate: 60 }
+);
 
 /**
  * Get upcoming events.
  */
-export async function getUpcomingEvents(limit = 9): Promise<EventWithStatus[]> {
-  try {
-    const supabase = await createClient();
-    const now = new Date().toISOString();
+export const getUpcomingEvents = unstable_cache(
+  async (limit = 9): Promise<EventWithStatus[]> => {
+    try {
+      const supabase = createPublicClient();
+      const now = new Date().toISOString();
 
-    const { data, error } = await supabase
-      .from('events_with_status')
-      .select('*')
-      .eq('status', 'published')
-      .eq('approved', true)
-      .gt('start_at', now)
-      .order('start_at', { ascending: true })
-      .limit(limit);
+      const { data, error } = await supabase
+        .from('events_with_status')
+        .select('*')
+        .eq('status', 'published')
+        .eq('approved', true)
+        .gt('start_at', now)
+        .order('start_at', { ascending: true })
+        .limit(limit);
 
-    if (error || !data || data.length === 0) {
+      if (error || !data || data.length === 0) {
+        return MOCK_EVENTS.filter((e) => e.computed_status === 'UPCOMING').slice(0, limit);
+      }
+
+      return (data || []).map(transformEvent);
+    } catch {
       return MOCK_EVENTS.filter((e) => e.computed_status === 'UPCOMING').slice(0, limit);
     }
-
-    return (data || []).map(transformEvent);
-  } catch {
-    return MOCK_EVENTS.filter((e) => e.computed_status === 'UPCOMING').slice(0, limit);
-  }
-}
+  },
+  ['upcoming-events'],
+  { revalidate: 60 }
+);
 
 /**
  * Get latest (recently published) events.
  */
-export async function getLatestEvents(limit = 8): Promise<EventWithStatus[]> {
-  try {
-    const supabase = await createClient();
+export const getLatestEvents = unstable_cache(
+  async (limit = 8): Promise<EventWithStatus[]> => {
+    try {
+      const supabase = createPublicClient();
 
-    const { data, error } = await supabase
-      .from('events_with_status')
-      .select('*')
-      .eq('status', 'published')
-      .eq('approved', true)
-      .order('created_at', { ascending: false })
-      .limit(limit);
+      const { data, error } = await supabase
+        .from('events_with_status')
+        .select('*')
+        .eq('status', 'published')
+        .eq('approved', true)
+        .order('created_at', { ascending: false })
+        .limit(limit);
 
-    if (error || !data || data.length === 0) {
+      if (error || !data || data.length === 0) {
+        return MOCK_EVENTS.slice(0, limit);
+      }
+
+      return (data || []).map(transformEvent);
+    } catch {
       return MOCK_EVENTS.slice(0, limit);
     }
-
-    return (data || []).map(transformEvent);
-  } catch {
-    return MOCK_EVENTS.slice(0, limit);
-  }
-}
+  },
+  ['latest-events'],
+  { revalidate: 60 }
+);
 
 /**
  * Get completed events.
  */
-export async function getCompletedEvents(limit = 6): Promise<EventWithStatus[]> {
-  try {
-    const supabase = await createClient();
-    const now = new Date().toISOString();
+export const getCompletedEvents = unstable_cache(
+  async (limit = 6): Promise<EventWithStatus[]> => {
+    try {
+      const supabase = createPublicClient();
+      const now = new Date().toISOString();
 
-    const { data, error } = await supabase
-      .from('events_with_status')
-      .select('*')
-      .eq('status', 'published')
-      .eq('approved', true)
-      .lt('end_at', now)
-      .order('end_at', { ascending: false })
-      .limit(limit);
+      const { data, error } = await supabase
+        .from('events_with_status')
+        .select('*')
+        .eq('status', 'published')
+        .eq('approved', true)
+        .lt('end_at', now)
+        .order('end_at', { ascending: false })
+        .limit(limit);
 
-    if (error || !data || data.length === 0) {
+      if (error || !data || data.length === 0) {
+        return MOCK_EVENTS.filter((e) => e.computed_status === 'COMPLETED').slice(0, limit);
+      }
+
+      return (data || []).map(transformEvent);
+    } catch {
       return MOCK_EVENTS.filter((e) => e.computed_status === 'COMPLETED').slice(0, limit);
     }
-
-    return (data || []).map(transformEvent);
-  } catch {
-    return MOCK_EVENTS.filter((e) => e.computed_status === 'COMPLETED').slice(0, limit);
-  }
-}
+  },
+  ['completed-events'],
+  { revalidate: 60 }
+);
 
 /**
  * Main event listing query with rich filters and pagination.
@@ -251,103 +271,111 @@ export async function getEvents(
 /**
  * Get event by slug with full details.
  */
-export async function getEventBySlug(slug: string) {
-  try {
-    const supabase = await createClient();
+export const getEventBySlug = unstable_cache(
+  async (slug: string) => {
+    try {
+      const supabase = createPublicClient();
 
-    const { data: event, error } = await supabase
-      .from('events_with_status')
-      .select('*')
-      .eq('slug', slug)
-      .single();
-
-    if (!error && event) {
-      const { data: schedule } = await supabase
-        .from('event_schedule')
+      const { data: event, error } = await supabase
+        .from('events_with_status')
         .select('*')
-        .eq('event_id', event.id)
-        .order('sort_order');
+        .eq('slug', slug)
+        .single();
 
-      const { data: images } = await supabase
-        .from('event_images')
-        .select('*')
-        .eq('event_id', event.id)
-        .order('sort_order');
+      if (!error && event) {
+        const { data: schedule } = await supabase
+          .from('event_schedule')
+          .select('*')
+          .eq('event_id', event.id)
+          .order('sort_order');
 
-      const { data: results } = await supabase
-        .from('event_results')
-        .select('*, profiles!user_id(name, avatar_url)')
-        .eq('event_id', event.id)
-        .order('position');
+        const { data: images } = await supabase
+          .from('event_images')
+          .select('*')
+          .eq('event_id', event.id)
+          .order('sort_order');
 
+        const { data: results } = await supabase
+          .from('event_results')
+          .select('*, profiles!user_id(name, avatar_url)')
+          .eq('event_id', event.id)
+          .order('position');
+
+        return {
+          ...transformEvent(event),
+          schedule: schedule || [],
+          images: images || [],
+          results: results || [],
+        };
+      }
+    } catch (err) {
+      console.error('getEventBySlug error:', err);
+    }
+
+    // Fallback to mock event
+    const mock = MOCK_EVENTS.find((e) => e.slug === slug);
+    if (mock) {
       return {
-        ...transformEvent(event),
-        schedule: schedule || [],
-        images: images || [],
-        results: results || [],
+        ...mock,
+        schedule: [
+          { id: 'sch-1', event_id: mock.id, day_number: 1, title: 'Check-in & Kit Distribution', description: 'Participant verification, security badges, and welcome kits.', start_time: '09:00:00', end_time: '10:30:00', venue_room: 'Main Atrium', speaker_name: 'Organizing Committee', sort_order: 1 },
+          { id: 'sch-2', event_id: mock.id, day_number: 1, title: 'Keynote & Problem Statements Release', description: 'Opening address and track problem statement disclosure.', start_time: '11:00:00', end_time: '12:30:00', venue_room: 'Grand Auditorium', speaker_name: 'Dr. Ramesh Sharma', sort_order: 2 },
+          { id: 'sch-3', event_id: mock.id, day_number: 1, title: 'Mentorship & Checkpoint 1', description: 'Industry mentors review initial project architecture and provide guidance.', start_time: '14:00:00', end_time: '19:00:00', venue_room: 'Lab Complex B', speaker_name: 'Mentorship Panel', sort_order: 3 },
+          { id: 'sch-4', event_id: mock.id, day_number: 2, title: 'Final Demonstrations & Award Ceremony', description: 'Top finalist pitches before VC judges and cash prize distribution.', start_time: '15:00:00', end_time: '18:00:00', venue_room: 'Grand Auditorium', speaker_name: 'Jury Panel', sort_order: 4 },
+        ],
+        images: [
+          { id: 'img-1', event_id: mock.id, image_url: mock.banner_url || '', caption: 'Main stage arena', sort_order: 1 },
+        ],
+        results: [],
+        registration_count: mock.registration_count,
+        interest_count: mock.interest_count,
+        attendance_count: mock.attendance_count,
       };
     }
-  } catch (err) {
-    console.error('getEventBySlug error:', err);
-  }
 
-  // Fallback to mock event
-  const mock = MOCK_EVENTS.find((e) => e.slug === slug);
-  if (mock) {
-    return {
-      ...mock,
-      schedule: [
-        { id: 'sch-1', event_id: mock.id, day_number: 1, title: 'Check-in & Kit Distribution', description: 'Participant verification, security badges, and welcome kits.', start_time: '09:00:00', end_time: '10:30:00', venue_room: 'Main Atrium', speaker_name: 'Organizing Committee', sort_order: 1 },
-        { id: 'sch-2', event_id: mock.id, day_number: 1, title: 'Keynote & Problem Statements Release', description: 'Opening address and track problem statement disclosure.', start_time: '11:00:00', end_time: '12:30:00', venue_room: 'Grand Auditorium', speaker_name: 'Dr. Ramesh Sharma', sort_order: 2 },
-        { id: 'sch-3', event_id: mock.id, day_number: 1, title: 'Mentorship & Checkpoint 1', description: 'Industry mentors review initial project architecture and provide guidance.', start_time: '14:00:00', end_time: '19:00:00', venue_room: 'Lab Complex B', speaker_name: 'Mentorship Panel', sort_order: 3 },
-        { id: 'sch-4', event_id: mock.id, day_number: 2, title: 'Final Demonstrations & Award Ceremony', description: 'Top finalist pitches before VC judges and cash prize distribution.', start_time: '15:00:00', end_time: '18:00:00', venue_room: 'Grand Auditorium', speaker_name: 'Jury Panel', sort_order: 4 },
-      ],
-      images: [
-        { id: 'img-1', event_id: mock.id, image_url: mock.banner_url || '', caption: 'Main stage arena', sort_order: 1 },
-      ],
-      results: [],
-      registration_count: mock.registration_count,
-      interest_count: mock.interest_count,
-      attendance_count: mock.attendance_count,
-    };
-  }
-
-  return null;
-}
+    return null;
+  },
+  ['event-by-slug'],
+  { revalidate: 60 }
+);
 
 /**
  * Get all categories with event counts.
  */
-export async function getCategories(): Promise<Category[]> {
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('is_active', true)
-      .order('sort_order');
+export const getCategories = unstable_cache(
+  async (): Promise<Category[]> => {
+    try {
+      const supabase = createPublicClient();
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order');
 
-    if (error || !data || data.length === 0) {
+      if (error || !data || data.length === 0) {
+        return MOCK_CATEGORIES;
+      }
+
+      const categoriesWithCounts = await Promise.all(
+        data.map(async (cat) => {
+          const { count } = await supabase
+            .from('events')
+            .select('id', { count: 'exact', head: true })
+            .eq('category_id', cat.id)
+            .eq('status', 'published')
+            .eq('approved', true);
+          return { ...cat, event_count: count ?? 0 };
+        })
+      );
+
+      return categoriesWithCounts;
+    } catch {
       return MOCK_CATEGORIES;
     }
-
-    const categoriesWithCounts = await Promise.all(
-      data.map(async (cat) => {
-        const { count } = await supabase
-          .from('events')
-          .select('id', { count: 'exact', head: true })
-          .eq('category_id', cat.id)
-          .eq('status', 'published')
-          .eq('approved', true);
-        return { ...cat, event_count: count ?? 0 };
-      })
-    );
-
-    return categoriesWithCounts;
-  } catch {
-    return MOCK_CATEGORIES;
-  }
-}
+  },
+  ['categories'],
+  { revalidate: 3600 }
+);
 
 /**
  * Get user's registrations.
@@ -618,73 +646,83 @@ export async function getGalleries(filters: { search?: string; status?: string }
   }
 }
 
-export async function getPublicGalleries() {
-  try {
-    const supabase = await createClient();
-    
-    const { data: galleries, error } = await supabase
-      .from('galleries')
-      .select(`
-        *,
-        events!event_id(title, slug),
-        colleges!college_id(name)
-      `)
-      .eq('status', 'published')
-      .order('gallery_date', { ascending: false, nullsFirst: false });
+export const getPublicGalleries = unstable_cache(
+  async () => {
+    try {
+      const supabase = createPublicClient();
       
-    if (error || !galleries) return [];
-
-    // Fetch media counts for each gallery to show "X Photos, Y Videos"
-    const galleriesWithCounts = await Promise.all(
-      galleries.map(async (gallery) => {
-        const { data: media } = await supabase
-          .from('gallery_media')
-          .select('media_type')
-          .eq('gallery_id', gallery.id);
-          
-        const photo_count = (media || []).filter(m => m.media_type === 'photo').length;
-        const video_count = (media || []).filter(m => m.media_type === 'video').length;
+      const { data: galleries, error } = await supabase
+        .from('galleries')
+        .select(`
+          *,
+          events!event_id(title, slug),
+          colleges!college_id(name)
+        `)
+        .eq('status', 'published')
+        .order('gallery_date', { ascending: false, nullsFirst: false });
         
-        return {
-          ...gallery,
-          photo_count,
-          video_count,
-          media_count: (media || []).length
-        };
-      })
-    );
-    
-    return galleriesWithCounts;
-  } catch (err) {
-    console.error('getPublicGalleries error:', err);
-    return [];
-  }
-}
+      if (error || !galleries) return [];
 
-export async function getGalleryMediaByEvent(eventId: string) {
-  try {
-    const supabase = await createClient();
-    
-    // First get the published gallery for this event
-    const { data: gallery, error: galleryErr } = await supabase
-      .from('galleries')
-      .select('id')
-      .eq('event_id', eventId)
-      .eq('status', 'published')
-      .single();
+      // Fetch media counts for each gallery to show "X Photos, Y Videos"
+      const galleriesWithCounts = await Promise.all(
+        galleries.map(async (gallery) => {
+          const { data: media } = await supabase
+            .from('gallery_media')
+            .select('media_type')
+            .eq('gallery_id', gallery.id);
+            
+          const photo_count = (media || []).filter(m => m.media_type === 'photo').length;
+          const video_count = (media || []).filter(m => m.media_type === 'video').length;
+          
+          return {
+            ...gallery,
+            photo_count,
+            video_count,
+            media_count: (media || []).length
+          };
+        })
+      );
       
-    if (galleryErr || !gallery) return [];
-    
-    // Then get its media
-    const { data: media, error: mediaErr } = await supabase
-      .from('gallery_media')
-      .select('*')
-      .eq('gallery_id', gallery.id)
-      .order('display_order', { ascending: true });
+      return galleriesWithCounts;
+    } catch (err) {
+      console.error('getPublicGalleries error:', err);
+      return [];
+    }
+  },
+  ['public-galleries'],
+  { revalidate: 60 }
+);
+
+export const getGalleryMediaByEvent = unstable_cache(
+  async (eventId: string) => {
+    try {
+      const supabase = createPublicClient();
       
-    if (mediaErr) return [];
-    return media || [];
-  } catch (err) {
-    return [];
-  }
-}
+      // First get the published gallery for this event
+      const { data: gallery, error: galleryErr } = await supabase
+        .from('galleries')
+        .select('id')
+        .eq('event_id', eventId)
+        .eq('status', 'published')
+        .single();
+        
+      if (galleryErr || !gallery) return [];
+      
+      // Then get its media
+      const { data: media, error: mediaErr } = await supabase
+        .from('gallery_media')
+        .select('*')
+        .eq('gallery_id', gallery.id)
+        .order('display_order', { ascending: true });
+        
+      if (mediaErr || !media) return [];
+      
+      return media;
+    } catch (err) {
+      console.error('getGalleryMediaByEvent error:', err);
+      return [];
+    }
+  },
+  ['gallery-media-by-event'],
+  { revalidate: 60 }
+);

@@ -15,6 +15,7 @@ import { formatDate } from "@/lib/utils";
 import { AdminCollegesTab } from "@/components/admin/AdminCollegesTab";
 import { AdminCategoriesTab } from "@/components/admin/AdminCategoriesTab";
 import { AdminOrganizersTab } from "@/components/admin/AdminOrganizersTab";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 
 // MUI Imports
 import Typography from "@mui/material/Typography";
@@ -150,6 +151,9 @@ export function AdminDashboardClient({
     category_id: categories[0]?.id || "",
     college_id: colleges[0]?.id || "",
     organizer_name: "Technical Council",
+    organizer_email: "",
+    organizer_designation: "",
+    organizer_photo_url: "",
     mode: "offline" as "online" | "offline" | "hybrid",
     venue: "",
     address: "",
@@ -796,7 +800,14 @@ export function AdminDashboardClient({
                           </Link>
 
                           <button
-                            onClick={() => setEditingEvent(evt)}
+                            onClick={() => setEditingEvent({
+                              ...evt,
+                              organizer_name: evt.organizers?.name || evt.organizer_name || "",
+                              organizer_email: evt.organizers?.email || "",
+                              organizer_designation: evt.organizers?.designation || "",
+                              organizer_photo_url: evt.organizers?.photo_url || "",
+                              organizer_id: evt.organizer_id
+                            })}
                             className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors cursor-pointer"
                             title="Edit Event Details"
                           >
@@ -903,7 +914,7 @@ export function AdminDashboardClient({
             </div>
 
             {/* Category & College */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Category *
@@ -933,17 +944,57 @@ export function AdminDashboardClient({
                   ))}
                 </select>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Organizer Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.organizer_name}
-                  onChange={(e) => setFormData({ ...formData, organizer_name: e.target.value })}
-                  className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-primary-500"
-                />
+            {/* Organizer Information */}
+            <div className="p-5 border border-slate-200 bg-white rounded-2xl shadow-sm">
+              <div className="mb-4">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-primary-500" /> ORGANIZER INFORMATION
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">Add the person or organization responsible for this event.</p>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-2">Organizer Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.organizer_name}
+                    onChange={(e) => setFormData({ ...formData, organizer_name: e.target.value })}
+                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-2">Organizer Email</label>
+                  <input
+                    type="email"
+                    placeholder="organizer@college.edu"
+                    value={formData.organizer_email}
+                    onChange={(e) => setFormData({ ...formData, organizer_email: e.target.value })}
+                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-2">Designation</label>
+                  <input
+                    type="text"
+                    placeholder="Event Coordinator"
+                    value={formData.organizer_designation}
+                    onChange={(e) => setFormData({ ...formData, organizer_designation: e.target.value })}
+                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-2">Organizer Photo</label>
+                  <ImageUpload
+                    value={formData.organizer_photo_url}
+                    onChange={(url) => setFormData({ ...formData, organizer_photo_url: url })}
+                    folder="organizer-images"
+                    label="Upload Photo (JPG, PNG, WEBP)"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1642,6 +1693,55 @@ export function AdminDashboardClient({
                   onChange={(e) => setEditingEvent({ ...editingEvent, venue: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900"
                 />
+              </div>
+
+              {/* Organizer Information (Edit) */}
+              <div className="p-4 border border-slate-200 bg-white rounded-2xl shadow-sm mt-4">
+                <div className="mb-3">
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-primary-500" /> ORGANIZER INFORMATION
+                  </h3>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Organizer Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingEvent.organizer_name || ""}
+                      onChange={(e) => setEditingEvent({ ...editingEvent, organizer_name: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Organizer Email</label>
+                    <input
+                      type="email"
+                      value={editingEvent.organizer_email || ""}
+                      onChange={(e) => setEditingEvent({ ...editingEvent, organizer_email: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Designation</label>
+                    <input
+                      type="text"
+                      value={editingEvent.organizer_designation || ""}
+                      onChange={(e) => setEditingEvent({ ...editingEvent, organizer_designation: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Organizer Photo</label>
+                    <ImageUpload
+                      value={editingEvent.organizer_photo_url || ""}
+                      onChange={(url) => setEditingEvent({ ...editingEvent, organizer_photo_url: url })}
+                      folder="organizer-images"
+                      label="Upload Photo"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div>

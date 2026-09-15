@@ -10,6 +10,7 @@ const VALID_EVENT_COLUMNS = new Set([
   "category_id",
   "college_id",
   "organizer_name",
+  "organizer_id",
   "banner_url",
   "start_at",
   "end_at",
@@ -38,6 +39,56 @@ export async function PATCH(
   try {
     const { id: eventId } = await params;
     const body = await req.json();
+    const supabase = createAdminClient();
+
+    // Organizer upsert logic if provided
+    const { organizer_name, organizer_email, organizer_designation, organizer_photo_url } = body;
+    let final_organizer_id = body.organizer_id || null;
+    
+    if (organizer_name) {
+      let orgQuery = supabase.from("organizers").select("id");
+      if (organizer_email) {
+        orgQuery = orgQuery.eq("email", organizer_email);
+      } else {
+        orgQuery = orgQuery.eq("name", organizer_name);
+      }
+      
+      const { data: existingOrg } = await orgQuery.maybeSingle();
+      
+      if (existingOrg) {
+        const { data: updatedOrg } = await supabase
+          .from("organizers")
+          .update({
+            name: organizer_name,
+            email: organizer_email || null,
+            designation: organizer_designation || null,
+            photo_url: organizer_photo_url || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingOrg.id)
+          .select("id")
+          .single();
+        final_organizer_id = updatedOrg?.id;
+      } else {
+        const { data: newOrg } = await supabase
+          .from("organizers")
+          .insert({
+            name: organizer_name,
+            email: organizer_email || null,
+            designation: organizer_designation || null,
+            photo_url: organizer_photo_url || null,
+          })
+          .select("id")
+          .single();
+        final_organizer_id = newOrg?.id;
+      }
+    }
+    
+    // Inject the final organizer_id into the body for sanitation
+    if (final_organizer_id) {
+      body.organizer_id = final_organizer_id;
+    }
+
 
     // Sanitize body to only include valid columns from events table
     const updateData: Record<string, any> = {};
@@ -50,8 +101,6 @@ export async function PATCH(
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "No valid event fields provided for update" }, { status: 400 });
     }
-
-    const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("events")
       .update(updateData)

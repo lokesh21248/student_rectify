@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import {
   Calendar, MapPin, Users, Heart, Share2, Clock, CheckCircle2,
   Award, ExternalLink, Wifi, QrCode, ArrowLeft, ChevronDown,
-  ChevronUp, Image as ImageIcon, Trophy,
+  ChevronUp, Image as ImageIcon, Trophy, UserCheck, School, Send
 } from "lucide-react";
 import { LiveBadge, StatusBadge } from "@/components/events/LiveBadge";
 import { CountdownTimer } from "@/components/events/CountdownTimer";
@@ -502,22 +502,58 @@ export function EventDetailClient({
             </div>
 
             {/* Organizer card */}
-            {event.organizer_name && (
-              <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-                <h3 className="text-sm font-semibold text-slate-900 mb-3">Organizer</h3>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                    {event.organizer_avatar_url ? (
-                      <Image src={event.organizer_avatar_url} alt={event.organizer_name} width={40} height={40} className="rounded-full" />
+            {(event.organizers || event.organizer_name) && (
+              <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary-50 rounded-full blur-3xl -mr-10 -mt-10 opacity-60 transition-opacity group-hover:opacity-100" />
+                
+                <h3 className="text-sm font-semibold text-slate-900 mb-4 relative z-10 flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-primary-500" /> Organizer
+                </h3>
+                
+                <div className="flex items-start gap-4 relative z-10">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-100 to-primary-50 border-2 border-white shadow-sm flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {event.organizers?.photo_url || event.organizer_avatar_url ? (
+                      <Image 
+                        src={event.organizers?.photo_url || event.organizer_avatar_url || ""} 
+                        alt={event.organizers?.name || event.organizer_name || "Organizer"} 
+                        width={48} 
+                        height={48} 
+                        className="w-full h-full object-cover" 
+                      />
                     ) : (
-                      <span className="text-primary-700 font-bold text-sm">
-                        {event.organizer_name[0]}
+                      <span className="text-primary-700 font-bold text-lg">
+                        {(event.organizers?.name || event.organizer_name || "O")[0].toUpperCase()}
                       </span>
                     )}
                   </div>
-                  <div>
-                    <p className="font-semibold text-slate-900 text-sm">{event.organizer_name}</p>
-                    {event.college_name && <p className="text-xs text-slate-500">{event.college_name}</p>}
+                  
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-slate-900 text-sm truncate">
+                      {event.organizers?.name || event.organizer_name}
+                    </p>
+                    
+                    {event.organizers?.designation && (
+                      <p className="text-xs font-medium text-primary-600 mt-0.5 truncate">
+                        {event.organizers.designation}
+                      </p>
+                    )}
+                    
+                    {event.college_name && (
+                      <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 truncate">
+                        <School className="w-3.5 h-3.5 flex-shrink-0" />
+                        {event.college_name}
+                      </p>
+                    )}
+                    
+                    {event.organizers?.email && (
+                      <a 
+                        href={`mailto:${event.organizers.email}`} 
+                        className="text-xs text-slate-500 hover:text-primary-600 transition-colors mt-1.5 flex items-center gap-1.5 truncate"
+                      >
+                        <Send className="w-3.5 h-3.5 flex-shrink-0" />
+                        {event.organizers.email}
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>

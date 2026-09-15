@@ -53,15 +53,17 @@ export interface Profile {
 
 export interface Organizer {
   id: string;
-  user_id: string;
-  college_id: string | null;
-  display_name: string | null;
-  bio: string | null;
-  avatar_url: string | null;
-  website: string | null;
-  social_links: Record<string, string>;
-  approved: boolean;
-  approved_at: string | null;
+  name: string;
+  photo_url: string | null;
+  designation: string | null;
+  email: string | null;
+  organization_name?: string | null;
+  college_name?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  linkedin?: string | null;
+  instagram?: string | null;
+  description?: string | null;
   created_at: string;
   updated_at: string;
   profile?: Profile;
@@ -139,6 +141,7 @@ export interface EventWithStatus extends Event {
   college_logo_url: string | null;
   organizer_name: string | null;
   organizer_avatar_url: string | null;
+  organizers?: Organizer;
   computed_status: EventComputedStatus;
   registration_count: number;
   interest_count: number;
@@ -297,6 +300,10 @@ export interface CreateEventInput {
   prize_info?: string;
   has_certificate: boolean;
   tags?: string[];
+  organizer_name?: string;
+  organizer_email?: string;
+  organizer_designation?: string;
+  organizer_photo_url?: string;
 }
 
 export interface EventFilters {
