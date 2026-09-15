@@ -577,6 +577,16 @@ export function AdminDashboardClient({
             Storage
           </Button>
           <Button
+            component={Link}
+            href="/admin/gallery"
+            variant="outlined"
+            color="primary"
+            startIcon={<ImageIcon size={16} />}
+            sx={{ borderRadius: "10px", fontWeight: 600 }}
+          >
+            Galleries
+          </Button>
+          <Button
             onClick={() => setActiveTab("create")}
             variant="contained"
             color="primary"

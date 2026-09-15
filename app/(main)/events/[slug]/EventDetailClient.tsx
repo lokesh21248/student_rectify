@@ -23,6 +23,7 @@ interface EventDetailClientProps {
   isInterested: boolean;
   registrationData: any;
   userId: string | null;
+  galleryMedia?: any[];
 }
 
 export function EventDetailClient({
@@ -31,6 +32,7 @@ export function EventDetailClient({
   isInterested: initialIsInterested,
   registrationData: initialRegistrationData,
   userId,
+  galleryMedia,
 }: EventDetailClientProps) {
   const router = useRouter();
   const [isRegistered, setIsRegistered] = useState(initialIsRegistered);
@@ -341,18 +343,23 @@ export function EventDetailClient({
 
             {/* Gallery */}
             {(() => {
-              const validGallery = (event.images || []).filter(
+              const validGallery = galleryMedia || [];
+              const legacyImages = (event.images || []).filter(
                 (img: any) => Boolean((img?.url || img?.image_url || "").trim())
               );
-              if (validGallery.length === 0) return null;
+              
+              const combinedMedia = [...validGallery, ...legacyImages];
+              
+              if (combinedMedia.length === 0) return null;
+              
               return (
-                <section>
+                <section id="gallery">
                   <div className="flex items-center gap-2 mb-4">
                     <ImageIcon className="w-5 h-5 text-slate-500" />
                     <h2 className="text-lg font-bold text-slate-900">Event Gallery</h2>
-                    <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{validGallery.length}</span>
+                    <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{combinedMedia.length}</span>
                   </div>
-                  <EventGallery images={validGallery} />
+                  <EventGallery media={combinedMedia} />
                 </section>
               );
             })()}

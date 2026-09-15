@@ -143,6 +143,7 @@ export interface EventWithStatus extends Event {
   registration_count: number;
   interest_count: number;
   attendance_count: number;
+  gallery_media_count: number;
   is_interested?: boolean;
 }
 
@@ -157,6 +158,40 @@ export interface EventImage {
   height: number | null;
   uploaded_by: string | null;
   created_at: string;
+}
+
+export interface Gallery {
+  id: string;
+  event_id: string;
+  name: string;
+  college_id: string | null;
+  gallery_date: string | null;
+  description: string | null;
+  cover_image_url: string | null;
+  status: 'draft' | 'published';
+  created_at: string;
+  updated_at: string;
+  event?: EventWithStatus;
+  gallery_date: string;
+  media_count?: number;
+  photo_count?: number;
+  video_count?: number;
+  events?: { title: string; slug: string };
+  colleges?: { name: string };
+}
+
+export interface GalleryMedia {
+  id: string;
+  gallery_id: string;
+  media_type: 'photo' | 'video';
+  title: string | null;
+  description: string | null;
+  media_url: string;
+  thumbnail_url: string | null;
+  display_order: number;
+  media_date: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface EventScheduleItem {

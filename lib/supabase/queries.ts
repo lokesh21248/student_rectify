@@ -544,6 +544,8 @@ function transformEvent(event: any): EventWithStatus {
     college_name: event.college_name ?? college?.name ?? null,
     college_slug: event.college_slug ?? college?.slug ?? null,
     college_logo_url: event.college_logo_url ?? college?.logo_url ?? null,
+    // Admin portal data uses related records for organizers/colleges directly in the join
+    organizer_id: event.organizer_id || (event as any).organizer?.id || null,
     organizer: event.organizers ?? null,
     organizer_name: event.organizer_name_real ?? event.organizer_name ?? org?.name ?? org?.display_name ?? null,
     organizer_avatar_url: event.organizer_avatar_url ?? org?.photo_url ?? org?.avatar_url ?? null,
@@ -551,6 +553,7 @@ function transformEvent(event: any): EventWithStatus {
     registration_count: event.registration_count ?? 0,
     interest_count: event.interest_count ?? 0,
     attendance_count: event.attendance_count ?? 0,
+    gallery_media_count: event.gallery_media_count ?? 0,
   };
 }
 
@@ -574,5 +577,114 @@ export async function getUserInterestedEventIds(visitorId: string | null): Promi
   } catch (err) {
     console.error('Error fetching visitor interests:', err);
     return new Set();
+  }
+}
+
+// ============================================================
+// Galleries
+// ============================================================
+
+export async function getGalleries(filters: { search?: string; status?: string } = {}) {
+  try {
+    const supabase = await createClient();
+    
+    let query = supabase
+      .from('galleries')
+      .select(`
+        *,
+        events_with_status!event_id(title, slug, computed_status),
+        colleges!college_id(name)
+      `);
+      
+    if (filters.status) {
+      query = query.eq('status', filters.status);
+    }
+    
+    if (filters.search) {
+      query = query.or(`name.ilike.%${filters.search}%,events_with_status.title.ilike.%${filters.search}%,colleges.name.ilike.%${filters.search}%`);
+    }
+
+    const { data, error } = await query.order('gallery_date', { ascending: false, nullsFirst: false });
+    
+    if (error) {
+      console.error('Error fetching galleries:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (err) {
+    console.error('getGalleries error:', err);
+    return [];
+  }
+}
+
+export async function getPublicGalleries() {
+  try {
+    const supabase = await createClient();
+    
+    const { data: galleries, error } = await supabase
+      .from('galleries')
+      .select(`
+        *,
+        events!event_id(title, slug),
+        colleges!college_id(name)
+      `)
+      .eq('status', 'published')
+      .order('gallery_date', { ascending: false, nullsFirst: false });
+      
+    if (error || !galleries) return [];
+
+    // Fetch media counts for each gallery to show "X Photos, Y Videos"
+    const galleriesWithCounts = await Promise.all(
+      galleries.map(async (gallery) => {
+        const { data: media } = await supabase
+          .from('gallery_media')
+          .select('media_type')
+          .eq('gallery_id', gallery.id);
+          
+        const photo_count = (media || []).filter(m => m.media_type === 'photo').length;
+        const video_count = (media || []).filter(m => m.media_type === 'video').length;
+        
+        return {
+          ...gallery,
+          photo_count,
+          video_count,
+          media_count: (media || []).length
+        };
+      })
+    );
+    
+    return galleriesWithCounts;
+  } catch (err) {
+    console.error('getPublicGalleries error:', err);
+    return [];
+  }
+}
+
+export async function getGalleryMediaByEvent(eventId: string) {
+  try {
+    const supabase = await createClient();
+    
+    // First get the published gallery for this event
+    const { data: gallery, error: galleryErr } = await supabase
+      .from('galleries')
+      .select('id')
+      .eq('event_id', eventId)
+      .eq('status', 'published')
+      .single();
+      
+    if (galleryErr || !gallery) return [];
+    
+    // Then get its media
+    const { data: media, error: mediaErr } = await supabase
+      .from('gallery_media')
+      .select('*')
+      .eq('gallery_id', gallery.id)
+      .order('display_order', { ascending: true });
+      
+    if (mediaErr) return [];
+    return media || [];
+  } catch (err) {
+    return [];
   }
 }

@@ -281,7 +281,20 @@ function HeroSlide({ event, isActive, theme }: { event: EventWithStatus; isActiv
                 <span className="text-5xl opacity-40">🎓</span>
               </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+            
+            {/* View Gallery Overlay Button */}
+            {event.gallery_media_count > 0 && (
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                <Link
+                  href={`/events/${event.slug}#gallery`}
+                  className="pointer-events-auto inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-semibold rounded-full border border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all transform hover:scale-105 active:scale-95"
+                >
+                  <span>View Gallery ({event.gallery_media_count})</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -155,7 +155,7 @@ export const MOCK_EVENTS: EventWithStatus[] = [
     computed_status: "LIVE",
     registration_count: 486,
     interest_count: 820,
-    attendance_count: 420,
+    attendance_count: 420, gallery_media_count: 0,
   },
   {
     id: "evt-technosphere-2026",
@@ -201,7 +201,7 @@ export const MOCK_EVENTS: EventWithStatus[] = [
     computed_status: "UPCOMING",
     registration_count: 654,
     interest_count: 1120,
-    attendance_count: 0,
+    attendance_count: 0, gallery_media_count: 0,
   },
   {
     id: "evt-rhythm-beats-2026",
@@ -247,7 +247,7 @@ export const MOCK_EVENTS: EventWithStatus[] = [
     computed_status: "UPCOMING",
     registration_count: 512,
     interest_count: 980,
-    attendance_count: 0,
+    attendance_count: 0, gallery_media_count: 0,
   },
   {
     id: "evt-venture-forge-2026",
@@ -293,7 +293,7 @@ export const MOCK_EVENTS: EventWithStatus[] = [
     computed_status: "UPCOMING",
     registration_count: 240,
     interest_count: 730,
-    attendance_count: 0,
+    attendance_count: 0, gallery_media_count: 0,
   },
   {
     id: "evt-fullstack-ai-bootcamp",
@@ -339,7 +339,7 @@ export const MOCK_EVENTS: EventWithStatus[] = [
     computed_status: "UPCOMING",
     registration_count: 890,
     interest_count: 1450,
-    attendance_count: 0,
+    attendance_count: 0, gallery_media_count: 0,
   },
   {
     id: "evt-esports-championship",
@@ -385,6 +385,6 @@ export const MOCK_EVENTS: EventWithStatus[] = [
     computed_status: "COMPLETED",
     registration_count: 256,
     interest_count: 890,
-    attendance_count: 240,
+    attendance_count: 240, gallery_media_count: 0,
   },
 ];

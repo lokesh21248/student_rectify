@@ -14,6 +14,7 @@ import {
   Award,
   Shield,
   Bell,
+  Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ const navLinks = [
   { href: "/", label: "Home", icon: Home },
   { href: "/events", label: "Explore Events", icon: Calendar },
   { href: "/events?view=categories", label: "Categories", icon: Grid3X3 },
+  { href: "/gallery", label: "Gallery", icon: ImageIcon },
   { href: "/verify/check", label: "Verify Certificate", icon: Award },
 ];
 

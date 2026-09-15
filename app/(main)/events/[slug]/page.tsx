@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getEventBySlug, getUserInterestedEventIds } from "@/lib/supabase/queries";
+import { getEventBySlug, getUserInterestedEventIds, getGalleryMediaByEvent } from "@/lib/supabase/queries";
 import { EventDetailClient } from "./EventDetailClient";
 import { auth } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
@@ -55,6 +55,8 @@ export default async function EventPage({ params }: EventPageProps) {
   const isRegistered = false; // TODO: Implement if needed
   const registrationData = null;
 
+  const galleryMedia = await getGalleryMediaByEvent(event.id);
+
   return (
     <EventDetailClient
       event={event}
@@ -62,6 +64,7 @@ export default async function EventPage({ params }: EventPageProps) {
       isInterested={isInterested}
       registrationData={registrationData}
       userId={clerkUserId}
+      galleryMedia={galleryMedia}
     />
   );
 }
