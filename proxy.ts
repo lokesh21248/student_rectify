@@ -12,8 +12,10 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     const authObj = await auth();
 
     if (!authObj.userId) {
-      // If not logged in, this will redirect to the Clerk sign-in page
-      authObj.protect();
+      // Redirect to sign-in page if not logged in
+      const signInUrl = new URL("/sign-in", req.url);
+      signInUrl.searchParams.set("redirect_url", req.url);
+      return NextResponse.redirect(signInUrl);
     }
 
     // Check if the user has admin role in their Clerk session claims
