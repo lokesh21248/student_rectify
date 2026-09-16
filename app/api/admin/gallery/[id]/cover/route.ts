@@ -4,13 +4,16 @@ import { auth } from "@clerk/nextjs/server";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    // Run auth + params resolution in parallel
+    const [{ userId }, body, { id }] = await Promise.all([
+      auth(),
+      req.json(),
+      params,
+    ]);
+
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = await req.json();
     const { cover_image_url, status } = body;
-    const { id } = await params;
-
     const supabase = createAdminClient();
 
     const updates: any = {};
@@ -21,7 +24,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .from("galleries")
       .update(updates)
       .eq("id", id)
-      .select()
+      .select("id, name, status, cover_image_url")
       .single();
 
     if (error) throw error;

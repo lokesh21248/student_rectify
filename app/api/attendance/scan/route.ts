@@ -63,19 +63,17 @@ export async function POST(req: NextRequest) {
 
     // Verify organizer manages this event
     if (!["college_admin", "super_admin"].includes(scannerProfile.role)) {
-      const { data: eventData } = await supabase
-        .from("events")
-        .select("organizer_id")
-        .eq("id", eventId)
-        .single();
+      const [eventResult, organizerResult] = await Promise.all([
+        supabase.from("events").select("organizer_id").eq("id", eventId).single(),
+        supabase.from("organizers").select("user_id").eq("user_id", scannerProfile.id).maybeSingle(),
+      ]);
 
-      if (eventData) {
+      if (eventResult.data && eventResult.data.organizer_id) {
         const { data: organizer } = await supabase
           .from("organizers")
           .select("user_id")
-          .eq("id", eventData.organizer_id)
+          .eq("id", eventResult.data.organizer_id)
           .single();
-
         if (!organizer || organizer.user_id !== scannerProfile.id) {
           return NextResponse.json({ error: "You are not the organizer of this event" }, { status: 403 });
         }
@@ -108,8 +106,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to record attendance" }, { status: 500 });
     }
 
-    // Create notification for participant
-    await supabase
+    // Fire-and-forget: notify participant without blocking the response
+    supabase
       .from("notifications")
       .insert({
         user_id: participantUserId,
@@ -118,6 +116,7 @@ export async function POST(req: NextRequest) {
         type: "registration_success",
         action_url: `/events/${eventId}`,
       })
+      .then(() => {})
       .catch(() => {});
 
     return NextResponse.json({

@@ -59,31 +59,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
     }
 
-    const { data: organizer } = await supabase
-      .from("organizers")
-      .select("id, college_id")
-      .eq("user_id", profile.id)
-      .single();
+    // Run organizer lookup and slug check in parallel
+    const slug = eventData.slug || generateSlug(eventData.title);
+    const [organizerResult, existingSlugResult] = await Promise.all([
+      supabase.from("organizers").select("id, college_id").eq("user_id", profile.id).single(),
+      supabase.from("events").select("id").eq("slug", slug).single(),
+    ]);
 
+    const organizer = organizerResult.data;
     if (!organizer) return NextResponse.json({ error: "Organizer profile not found" }, { status: 404 });
 
     // Ensure unique slug
-    let slug = eventData.slug || generateSlug(eventData.title);
-    const { data: existing } = await supabase
-      .from("events")
-      .select("id")
-      .eq("slug", slug)
-      .single();
-
-    if (existing) {
-      slug = `${slug}-${Date.now().toString(36)}`;
-    }
+    const finalSlug = existingSlugResult.data
+      ? `${slug}-${Date.now().toString(36)}`
+      : slug;
 
     const { data: event, error } = await supabase
       .from("events")
       .insert({
         ...eventData,
-        slug,
+        slug: finalSlug,
         organizer_id: organizer.id,
         college_id: organizer.college_id,
         status: publish ? "published" : "draft",

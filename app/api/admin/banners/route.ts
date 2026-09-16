@@ -6,7 +6,7 @@ export async function GET() {
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("banners")
-      .select("*")
+      .select("id, title, subtitle, image_path, cta_text, cta_action, is_active, sort_order, start_date, end_date, created_at")
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
 
@@ -14,7 +14,9 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ banners: data });
+    const response = NextResponse.json({ banners: data });
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Failed to fetch banners" }, { status: 500 });
   }

@@ -4,10 +4,10 @@ import { auth } from "@clerk/nextjs/server";
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
+    // Run auth + body parsing in parallel
+    const [{ userId }, body] = await Promise.all([auth(), req.json()]);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = await req.json();
     const { gallery_id, media_type, media_url, title, display_order } = body;
 
     if (!gallery_id || !media_type || !media_url) {
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
         display_order: display_order || 0,
         media_date: new Date().toISOString(),
       })
-      .select()
+      .select("id, gallery_id, media_type, media_url, title, display_order, media_date")
       .single();
 
     if (error) throw error;

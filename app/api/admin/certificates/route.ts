@@ -5,28 +5,27 @@ export async function GET() {
   try {
     const supabase = createAdminClient();
 
-    // Try admin_certificates table first (standalone admin-issued certs)
-    const { data: adminCerts, error: adminError } = await supabase
-      .from("admin_certificates")
-      .select("*")
-      .order("created_at", { ascending: false });
+    // Run both certificate sources in parallel
+    const [adminCertsResult, certsResult] = await Promise.all([
+      supabase
+        .from("admin_certificates")
+        .select("id, certificate_number, recipient_name, recipient_email, event_title, college_name, issue_date, created_at, verified_count")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("certificates")
+        .select("id, certificate_number, recipient_name, event_id, issued_at, created_at")
+        .order("created_at", { ascending: false }),
+    ]);
 
-    if (!adminError && adminCerts && adminCerts.length > 0) {
-      return NextResponse.json({ certificates: adminCerts });
+    if (!adminCertsResult.error && adminCertsResult.data && adminCertsResult.data.length > 0) {
+      return NextResponse.json({ certificates: adminCertsResult.data });
     }
 
-    // Fallback: try the relational certificates table
-    const { data, error } = await supabase
-      .from("certificates")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      // Return empty array rather than erroring — table may not have data
+    if (certsResult.error) {
       return NextResponse.json({ certificates: [] });
     }
 
-    return NextResponse.json({ certificates: data || [] });
+    return NextResponse.json({ certificates: certsResult.data || [] });
   } catch (error: any) {
     return NextResponse.json({ certificates: [], error: error.message }, { status: 200 });
   }

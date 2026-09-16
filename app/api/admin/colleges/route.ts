@@ -5,7 +5,7 @@ export async function GET() {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("colleges")
-    .select("*")
+    .select("id, name, slug, status, logo_url, city, state, website, sort_order, created_at")
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
 
@@ -13,9 +13,11 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ 
-    data: data?.map((c: any) => ({ ...c, is_active: c.status !== 'inactive' })) 
+  const response = NextResponse.json({
+    data: data?.map((c: any) => ({ ...c, is_active: c.status !== 'inactive' }))
   });
+  response.headers.set("Cache-Control", "no-store");
+  return response;
 }
 
 export async function POST(req: Request) {

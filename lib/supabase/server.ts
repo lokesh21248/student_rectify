@@ -78,11 +78,15 @@ export async function createAuthClient() {
 
 /**
  * Creates a Supabase admin client using the service role key.
+ * Memoized as a singleton — the client is constructed once per process.
  * NEVER use in browser-accessible code.
  */
+let _adminClient: ReturnType<typeof import('@supabase/supabase-js').createClient> | null = null;
+
 export function createAdminClient() {
+  if (_adminClient) return _adminClient;
   const { createClient } = require('@supabase/supabase-js');
-  return createClient(
+  _adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
@@ -92,4 +96,5 @@ export function createAdminClient() {
       },
     }
   );
+  return _adminClient!;
 }

@@ -62,13 +62,23 @@ export function EventDetailClient({
   const [regCollege, setRegCollege] = useState("");
 
   // Register / Cancel
-  function handleRegister() {
+  async function handleRegister() {
     if (isRegistered) {
       if (!confirm("Are you sure you want to cancel your registration?")) return;
-      setIsRegistered(false);
-      setRegistrationData(null);
-      setRegistrationCount((c: number) => Math.max(0, c - 1));
-      toast.success("Registration cancelled");
+      setLoading("register");
+      try {
+        const res = await fetch(`/api/events/${event.id}/register`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Failed to cancel registration");
+        
+        setIsRegistered(false);
+        setRegistrationData(null);
+        setRegistrationCount((c: number) => Math.max(0, c - 1));
+        toast.success("Registration cancelled");
+      } catch (err: any) {
+        toast.error(err.message || "Unable to cancel registration");
+      } finally {
+        setLoading(null);
+      }
     } else {
       setShowRegModal(true);
     }

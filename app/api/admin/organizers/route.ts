@@ -6,18 +6,20 @@ export async function GET() {
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("organizers")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select("id, name, email, designation, photo_url, organization_name, college_name, phone, website, created_at")
+      .order("created_at", { ascending: false })
+      .limit(500);
 
     if (error) {
       if (error.code === '42P01') {
-        // Table doesn't exist yet, return empty array gracefully
         return NextResponse.json({ organizers: [] });
       }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ organizers: data });
+    const response = NextResponse.json({ organizers: data });
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Failed to fetch organizers" }, { status: 500 });
   }

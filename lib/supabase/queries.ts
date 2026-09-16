@@ -283,23 +283,15 @@ export const getEventBySlug = unstable_cache(
         .single();
 
       if (!error && event) {
-        const { data: schedule } = await supabase
-          .from('event_schedule')
-          .select('*')
-          .eq('event_id', event.id)
-          .order('sort_order');
-
-        const { data: images } = await supabase
-          .from('event_images')
-          .select('*')
-          .eq('event_id', event.id)
-          .order('sort_order');
-
-        const { data: results } = await supabase
-          .from('event_results')
-          .select('*, profiles!user_id(name, avatar_url)')
-          .eq('event_id', event.id)
-          .order('position');
+        const [
+          { data: schedule },
+          { data: images },
+          { data: results }
+        ] = await Promise.all([
+          supabase.from('event_schedule').select('*').eq('event_id', event.id).order('sort_order'),
+          supabase.from('event_images').select('*').eq('event_id', event.id).order('sort_order'),
+          supabase.from('event_results').select('*, profiles!user_id(name, avatar_url)').eq('event_id', event.id).order('position')
+        ]);
 
         return {
           ...transformEvent(event),
@@ -663,25 +655,25 @@ export const getPublicGalleries = unstable_cache(
         
       if (error || !galleries) return [];
 
-      // Fetch media counts for each gallery to show "X Photos, Y Videos"
-      const galleriesWithCounts = await Promise.all(
-        galleries.map(async (gallery) => {
-          const { data: media } = await supabase
-            .from('gallery_media')
-            .select('media_type')
-            .eq('gallery_id', gallery.id);
-            
-          const photo_count = (media || []).filter(m => m.media_type === 'photo').length;
-          const video_count = (media || []).filter(m => m.media_type === 'video').length;
-          
-          return {
-            ...gallery,
-            photo_count,
-            video_count,
-            media_count: (media || []).length
-          };
-        })
-      );
+      // Fetch media counts for all galleries at once
+      const galleryIds = galleries.map(g => g.id);
+      const { data: allMedia } = await supabase
+        .from('gallery_media')
+        .select('gallery_id, media_type')
+        .in('gallery_id', galleryIds);
+
+      const galleriesWithCounts = galleries.map((gallery) => {
+        const media = (allMedia || []).filter(m => m.gallery_id === gallery.id);
+        const photo_count = media.filter(m => m.media_type === 'photo').length;
+        const video_count = media.filter(m => m.media_type === 'video').length;
+        
+        return {
+          ...gallery,
+          photo_count,
+          video_count,
+          media_count: media.length
+        };
+      });
       
       return galleriesWithCounts;
     } catch (err) {

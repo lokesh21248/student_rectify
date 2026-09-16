@@ -4,10 +4,10 @@ import { auth } from "@clerk/nextjs/server";
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
+    // Run auth + body parsing in parallel
+    const [{ userId }, body] = await Promise.all([auth(), req.json()]);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = await req.json();
     const { name, event_id, status } = body;
 
     if (!name || !event_id) {
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
         status: status || 'draft',
         gallery_date: new Date().toISOString(),
       })
-      .select()
+      .select("id, name, event_id, college_id, status, gallery_date, created_at")
       .single();
 
     if (error) throw error;

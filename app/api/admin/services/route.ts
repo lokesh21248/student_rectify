@@ -7,7 +7,8 @@ export async function GET() {
     const { data, error } = await supabase
       .from("services")
       .select(`
-        *,
+        id, name, description, price, discount_price, duration_minutes,
+        image_path, is_active, sort_order, category_id, created_at,
         categories!category_id(id, name, slug)
       `)
       .order("sort_order", { ascending: true })
@@ -17,7 +18,9 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ services: data });
+    const response = NextResponse.json({ services: data });
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Failed to fetch services" }, { status: 500 });
   }

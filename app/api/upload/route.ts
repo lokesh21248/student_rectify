@@ -17,6 +17,9 @@ const ALLOWED_TYPES = [
   "text/plain",
 ];
 
+// Cache the resolved bucket name so we don't call listBuckets() on every upload
+let resolvedBucket: string | null = null;
+
 function generateUUID(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
@@ -74,28 +77,31 @@ export async function POST(req: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // Discover available buckets
-    let targetBucket = "dinesh_project"; // Default bucket name
-    try {
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const existingNames = (buckets || []).map((b: any) => b.name);
+    // Discover available bucket (cached across requests in the same process)
+    let targetBucket = resolvedBucket ?? "dinesh_project";
+    if (!resolvedBucket) {
+      try {
+        const { data: buckets } = await supabase.storage.listBuckets();
+        const existingNames = (buckets || []).map((b: any) => b.name);
 
-      if (reqBucket && existingNames.includes(reqBucket)) {
-        targetBucket = reqBucket;
-      } else if (existingNames.includes("dinesh_project")) {
-        targetBucket = "dinesh_project";
-      } else if (existingNames.length > 0) {
-        targetBucket = existingNames[0];
-      } else {
-        // Try creating 'dinesh_project' bucket as public
-        const { error: bucketError } = await supabase.storage.createBucket("dinesh_project", {
-          public: true,
-          fileSizeLimit: 10 * 1024 * 1024,
-        });
-        if (!bucketError) targetBucket = "dinesh_project";
+        if (reqBucket && existingNames.includes(reqBucket)) {
+          targetBucket = reqBucket;
+        } else if (existingNames.includes("dinesh_project")) {
+          targetBucket = "dinesh_project";
+        } else if (existingNames.length > 0) {
+          targetBucket = existingNames[0];
+        } else {
+          const { error: bucketError } = await supabase.storage.createBucket("dinesh_project", {
+            public: true,
+            fileSizeLimit: 10 * 1024 * 1024,
+          });
+          if (!bucketError) targetBucket = "dinesh_project";
+        }
+        // Cache for future requests
+        resolvedBucket = targetBucket;
+      } catch (bucketErr) {
+        console.error("Bucket discovery error:", bucketErr);
       }
-    } catch (bucketErr) {
-      console.error("Bucket discovery error:", bucketErr);
     }
 
     // Generate a unique filename using UUID to avoid collisions

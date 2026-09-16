@@ -9,18 +9,22 @@ export async function GET() {
     const { data, error } = await supabase
       .from("events")
       .select(`
-        *,
+        id, title, slug, status, approved, featured, mode, start_at, end_at,
+        created_at, registration_count, interest_count, banner_url, college_id,
         categories!category_id(id, name, slug, icon, color),
         colleges!college_id(id, name, slug, logo_url),
         organizers!organizer_id(id, name, email, designation, photo_url)
       `)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ events: data });
+    const response = NextResponse.json({ events: data });
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Failed to fetch events" }, { status: 500 });
   }
@@ -69,18 +73,32 @@ export async function POST(req: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // 1. Organizer logic: Upsert into organizers table if organizer_name is provided
-    let final_organizer_id = null;
+    // Run organizer lookup and slug uniqueness check concurrently
+    let orgQuery = supabase.from("organizers").select("id");
     if (organizer_name) {
-      let orgQuery = supabase.from("organizers").select("id");
       if (organizer_email) {
         orgQuery = orgQuery.eq("email", organizer_email);
       } else {
         orgQuery = orgQuery.eq("name", organizer_name);
       }
-      
-      const { data: existingOrg } = await orgQuery.maybeSingle();
-      
+    }
+
+    const rawSlugBase = rawSlug || generateSlug(title);
+
+    const [orgResult, slugResult] = await Promise.all([
+      organizer_name ? orgQuery.maybeSingle() : Promise.resolve({ data: null }),
+      supabase.from("events").select("id").eq("slug", rawSlugBase).maybeSingle(),
+    ]);
+
+    let slug = rawSlugBase;
+    if (slugResult.data) {
+      slug = `${rawSlugBase}-${Date.now().toString(36).slice(-4)}`;
+    }
+
+    // 1. Organizer upsert (sequential since it depends on org lookup result)
+    let final_organizer_id = null;
+    if (organizer_name) {
+      const existingOrg = orgResult.data;
       if (existingOrg) {
         const { data: updatedOrg } = await supabase
           .from("organizers")
@@ -108,18 +126,6 @@ export async function POST(req: NextRequest) {
           .single();
         final_organizer_id = newOrg?.id;
       }
-    }
-    
-    // 2. Ensure unique slug
-    let slug = rawSlug || generateSlug(title);
-    const { data: existingEvent } = await supabase
-      .from("events")
-      .select("id")
-      .eq("slug", slug)
-      .maybeSingle();
-
-    if (existingEvent) {
-      slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
     }
 
     // 3. Construct insert payload dynamically (omitting organizer_id)

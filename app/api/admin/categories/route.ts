@@ -5,29 +5,39 @@ import { revalidatePath } from "next/cache";
 export async function GET() {
   try {
     const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from("categories")
-      .select("*")
-      .order("sort_order", { ascending: true })
-      .order("name", { ascending: true });
 
-    if (error) {
-      console.error("Admin categories GET error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    // Fetch categories and event counts in parallel with a single batched count
+    const [categoriesResult, countsResult] = await Promise.all([
+      supabase
+        .from("categories")
+        .select("id, name, slug, description, icon, color, sort_order, is_active, image_url, icon_type, created_at")
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true }),
+      supabase
+        .from("events")
+        .select("category_id", { count: "exact" })
+        .not("category_id", "is", null),
+    ]);
+
+    if (categoriesResult.error) {
+      console.error("Admin categories GET error:", categoriesResult.error);
+      return NextResponse.json({ error: categoriesResult.error.message }, { status: 500 });
     }
 
-    // Include event counts for admin dashboard
-    const categoriesWithCounts = await Promise.all(
-      data.map(async (cat: any) => {
-        const { count } = await supabase
-          .from("events")
-          .select("id", { count: "exact", head: true })
-          .eq("category_id", cat.id);
-        return { ...cat, event_count: count ?? 0 };
-      })
-    );
+    // Build count map from the single events query
+    const countMap: Record<string, number> = {};
+    (countsResult.data || []).forEach((row: any) => {
+      countMap[row.category_id] = (countMap[row.category_id] || 0) + 1;
+    });
 
-    return NextResponse.json({ success: true, data: categoriesWithCounts });
+    const categoriesWithCounts = (categoriesResult.data || []).map((cat: any) => ({
+      ...cat,
+      event_count: countMap[cat.id] ?? 0,
+    }));
+
+    const response = NextResponse.json({ success: true, data: categoriesWithCounts });
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   } catch (error: any) {
     console.error("Admin categories GET catch:", error);
     return NextResponse.json({ error: error.message || "Failed to fetch categories" }, { status: 500 });

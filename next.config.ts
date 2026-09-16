@@ -1,6 +1,10 @@
-import type { NextConfig } from "next"; // Forced restart
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Compress responses
+  compress: true,
+  // Power by header removal (minor security + perf)
+  poweredByHeader: false,
   images: {
     remotePatterns: [
       {
@@ -34,11 +38,34 @@ const nextConfig: NextConfig = {
         hostname: "images.unsplash.com",
       },
     ],
+    // Use WebP by default for smaller payloads
+    formats: ["image/avif", "image/webp"],
+    // Aggressive caching of optimized images (1 week)
+    minimumCacheTTL: 604800,
   },
   experimental: {
     serverActions: {
       allowedOrigins: ["localhost:3000"],
     },
+  },
+  // Add HTTP caching headers for static public API endpoints
+  async headers() {
+    return [
+      {
+        // Public gallery & event listing — cache 60s on CDN, always revalidate
+        source: "/api/public/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, s-maxage=60, stale-while-revalidate=300" },
+        ],
+      },
+      {
+        // Public event list endpoint
+        source: "/api/events",
+        headers: [
+          { key: "Cache-Control", value: "public, s-maxage=30, stale-while-revalidate=120" },
+        ],
+      },
+    ];
   },
 };
 

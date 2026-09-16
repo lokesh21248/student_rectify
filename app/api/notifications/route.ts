@@ -18,12 +18,14 @@ export async function GET(req: NextRequest) {
 
     const { data } = await supabase
       .from("notifications")
-      .select("*")
+      .select("id, title, body, type, read, action_url, created_at")
       .eq("user_id", profile.id)
       .order("created_at", { ascending: false })
       .limit(20);
 
-    return NextResponse.json({ notifications: data || [] });
+    const response = NextResponse.json({ notifications: data || [] });
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   } catch (error) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -45,20 +47,12 @@ export async function PATCH(req: NextRequest) {
 
     if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
-    if (notificationId) {
-      await supabase
-        .from("notifications")
-        .update({ read: true })
-        .eq("id", notificationId)
-        .eq("user_id", profile.id);
-    } else {
-      // Mark all as read
-      await supabase
-        .from("notifications")
-        .update({ read: true })
-        .eq("user_id", profile.id)
-        .eq("read", false);
-    }
+    // Fire update without waiting for confirmation
+    const updateQuery = notificationId
+      ? supabase.from("notifications").update({ read: true }).eq("id", notificationId).eq("user_id", profile.id)
+      : supabase.from("notifications").update({ read: true }).eq("user_id", profile.id).eq("read", false);
+
+    await updateQuery;
 
     return NextResponse.json({ success: true });
   } catch (error) {

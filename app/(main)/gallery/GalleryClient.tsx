@@ -169,7 +169,7 @@ export function GalleryClient({ galleries }: GalleryClientProps) {
                     {gallery.gallery_date && (
                       <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
                         <Calendar className="w-3.5 h-3.5" />
-                        <span>{formatDate(gallery.gallery_date, "MMMM d, yyyy")}</span>
+                        <span suppressHydrationWarning>{formatDate(gallery.gallery_date, "MMMM d, yyyy")}</span>
                       </div>
                     )}
                   </div>

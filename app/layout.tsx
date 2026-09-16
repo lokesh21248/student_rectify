@@ -48,7 +48,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
-        <body className={`${inter.variable} antialiased`}>
+        <body className={`${inter.variable} antialiased`} suppressHydrationWarning>
           <MuiThemeProvider>
             {children}
             <Toaster

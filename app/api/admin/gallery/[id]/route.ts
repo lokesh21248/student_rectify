@@ -4,10 +4,10 @@ import { auth } from "@clerk/nextjs/server";
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth();
+    // Run auth + params in parallel
+    const [{ userId }, { id }] = await Promise.all([auth(), params]);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { id } = await params;
     const supabase = createAdminClient();
 
     // The ON DELETE CASCADE in SQL will handle deleting the gallery_media records
