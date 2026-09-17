@@ -137,7 +137,19 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLoaded || loading) return;
+    if (loading) return;
+
+    let activeSignIn = signIn;
+    if (!isLoaded || !activeSignIn) {
+      const clerk = typeof window !== "undefined" ? (window as any).Clerk : null;
+      if (clerk?.client?.signIn) {
+        activeSignIn = clerk.client.signIn;
+      } else {
+        setErrorMessage("Authentication service is initializing. Please wait a moment and try again.");
+        return;
+      }
+    }
+
     if (!email.trim()) {
       setErrorMessage("Please enter your admin email address first.");
       return;
@@ -147,15 +159,45 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     setErrorMessage(null);
 
     try {
-      await signIn.create({
-        strategy: "reset_password_email_code",
+      // Step 1: Create a sign-in attempt with the email identifier
+      const signInAttempt = await activeSignIn.create({
         identifier: email.trim(),
       });
+
+      // Step 2: Locate the reset_password_email_code strategy factor
+      const resetFactor = signInAttempt.supportedFirstFactors?.find(
+        (ff: any) => ff.strategy === "reset_password_email_code"
+      ) as any;
+
+      if (!resetFactor || !resetFactor.emailAddressId) {
+        setErrorMessage(
+          "Password reset via email code is not available for this account. Please verify your email or contact your platform administrator."
+        );
+        return;
+      }
+
+      // Step 3: Trigger the OTP code delivery to the user's email
+      await activeSignIn.prepareFirstFactor({
+        strategy: "reset_password_email_code",
+        emailAddressId: resetFactor.emailAddressId,
+      });
+
       setResetSent(true);
     } catch (err: any) {
-      setErrorMessage(
-        err.errors?.[0]?.message || err.message || "Failed to send password reset code."
-      );
+      console.error("Forgot password error:", err);
+      const firstError = err.errors?.[0];
+      const code = firstError?.code;
+      const clerkError =
+        firstError?.longMessage ||
+        firstError?.message ||
+        err.message ||
+        "Failed to send password reset code.";
+
+      if (code === "form_identifier_not_found") {
+        setErrorMessage("No account found with this email address. Please check the spelling or sign up for a new account.");
+      } else {
+        setErrorMessage(clerkError);
+      }
     } finally {
       setLoading(false);
     }
@@ -163,26 +205,81 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
   const handleResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLoaded || loading) return;
+    if (loading) return;
+
+    let activeSignIn = signIn;
+    let activeSetActive = setActive;
+
+    if (!isLoaded || !activeSignIn) {
+      const clerk = typeof window !== "undefined" ? (window as any).Clerk : null;
+      if (clerk?.client?.signIn) {
+        activeSignIn = clerk.client.signIn;
+        activeSetActive = (opts: any) => clerk.setActive(opts);
+      } else {
+        setErrorMessage("Authentication service is initializing. Please wait a moment.");
+        return;
+      }
+    }
+
+    if (!resetCode.trim()) {
+      setErrorMessage("Please enter the verification code sent to your email.");
+      return;
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+      setErrorMessage("New password must be at least 8 characters long.");
+      return;
+    }
 
     setLoading(true);
     setErrorMessage(null);
 
     try {
-      const result = await signIn.attemptFirstFactor({
+      const result = await activeSignIn.attemptFirstFactor({
         strategy: "reset_password_email_code",
         code: resetCode.trim(),
         password: newPassword,
       });
 
       if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
+        await activeSetActive({ session: result.createdSessionId });
         window.location.href = redirectUrl;
+      } else if (result.status === "needs_new_password") {
+        const resetResult = await (activeSignIn as any).resetPassword({
+          password: newPassword,
+        });
+        if (resetResult.status === "complete") {
+          await activeSetActive({ session: resetResult.createdSessionId });
+          window.location.href = redirectUrl;
+        } else {
+          setErrorMessage("Password reset status: " + resetResult.status);
+        }
       } else {
-        setErrorMessage("Password reset requires further verification.");
+        setErrorMessage("Password reset requires further verification. Status: " + result.status);
       }
     } catch (err: any) {
-      setErrorMessage(err.errors?.[0]?.message || err.message || "Failed to reset password.");
+      console.error("Reset password submit error:", err);
+      const firstError = err.errors?.[0];
+      const code = firstError?.code;
+      const clerkError =
+        firstError?.longMessage ||
+        firstError?.message ||
+        err.message ||
+        "Failed to reset password.";
+
+      if (code === "form_password_length_too_short") {
+        setErrorMessage(
+          "Password must meet the project's minimum length requirement. To allow 8+ characters, ensure Minimum password length is set to 8 in your Clerk Dashboard under User & Authentication > Password."
+        );
+      } else if (code === "form_password_pwned") {
+        setErrorMessage(
+          "This password has appeared in a data breach and cannot be used for security reasons. Please choose a different strong password."
+        );
+      } else if (code === "form_code_incorrect") {
+        setErrorMessage("Invalid verification code. Please check your email and enter the code again.");
+      } else {
+        setErrorMessage(clerkError);
+      }
     } finally {
       setLoading(false);
     }
@@ -242,6 +339,8 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
         {/* Password Reset OTP Form */}
         {isResetMode && resetSent ? (
           <form onSubmit={handleResetSubmit} className="space-y-4">
+            {/* Accessibility hidden username field */}
+            <input type="text" name="username" value={email} autoComplete="username" className="hidden" readOnly tabIndex={-1} />
             <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3 text-sm text-emerald-800 mb-4">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
               <div>
@@ -294,6 +393,9 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
               onClick={() => {
                 setIsResetMode(false);
                 setResetSent(false);
+                setResetCode("");
+                setNewPassword("");
+                setErrorMessage(null);
               }}
               className="w-full text-center text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors pt-2 cursor-pointer"
             >
@@ -332,7 +434,10 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
             <button
               type="button"
-              onClick={() => setIsResetMode(false)}
+              onClick={() => {
+                setIsResetMode(false);
+                setErrorMessage(null);
+              }}
               className="w-full text-center text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors pt-2 cursor-pointer"
             >
               Back to Sign In
@@ -369,7 +474,10 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
                 </label>
                 <button
                   type="button"
-                  onClick={() => setIsResetMode(true)}
+                  onClick={() => {
+                    setIsResetMode(true);
+                    setErrorMessage(null);
+                  }}
                   className="text-xs font-semibold text-primary-600 hover:text-primary-700 transition-colors cursor-pointer"
                 >
                   Forgot password?
