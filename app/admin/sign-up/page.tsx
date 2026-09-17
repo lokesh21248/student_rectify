@@ -131,6 +131,13 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
         const finalizeResult = await activeSignUp.finalize();
         if (finalizeResult.error) throw finalizeResult.error;
 
+        setStatusMessage("Setting up admin profile...");
+        const profileRes = await fetch("/api/admin/profile", { method: "POST" });
+        if (!profileRes.ok) {
+          const profileData = await profileRes.json().catch(() => ({}));
+          throw new Error(profileData.error || "Failed to create admin profile.");
+        }
+
         setStatusMessage("Checking admin access...");
         const authCheckRes = await fetch("/api/admin/check-auth");
         const authData = await authCheckRes.json();
@@ -206,6 +213,13 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
         setStatusMessage("Activating session...");
         const finalizeResult = await activeSignUp.finalize();
         if (finalizeResult.error) throw finalizeResult.error;
+
+        setStatusMessage("Setting up admin profile...");
+        const profileRes = await fetch("/api/admin/profile", { method: "POST" });
+        if (!profileRes.ok) {
+          const profileData = await profileRes.json().catch(() => ({}));
+          throw new Error(profileData.error || "Failed to create admin profile. Please try signing in.");
+        }
 
         setStatusMessage("Checking admin access...");
         const authCheckRes = await fetch("/api/admin/check-auth");
