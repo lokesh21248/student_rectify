@@ -521,6 +521,8 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
               </label>
             </div>
 
+            <div id="clerk-captcha"></div>
+
             {/* Sign in button */}
             <button
               type="submit"

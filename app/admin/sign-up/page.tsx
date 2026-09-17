@@ -429,6 +429,8 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
               </p>
             </div>
 
+            <div id="clerk-captcha"></div>
+
             {/* Confirm Password field */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
