@@ -46,9 +46,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <ClerkProvider>
-      <html lang="en" suppressHydrationWarning>
-        <body className={`${inter.variable} antialiased`} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.variable} antialiased`} suppressHydrationWarning>
+        <ClerkProvider>
           <MuiThemeProvider>
             {children}
             <Toaster
@@ -58,8 +58,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               toastOptions={{ style: { fontFamily: "var(--font-sans)", borderRadius: "12px" } }}
             />
           </MuiThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }

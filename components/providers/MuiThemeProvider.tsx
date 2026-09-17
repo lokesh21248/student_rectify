@@ -180,7 +180,7 @@ const theme = createTheme({
 export function MuiThemeProvider({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline enableColorScheme />
+      <CssBaseline />
       {children}
     </ThemeProvider>
   );

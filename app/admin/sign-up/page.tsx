@@ -32,7 +32,7 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
   const { isLoaded, signUp, setActive } = useSignUp();
   const { isSignedIn, user } = useUser();
 
-  const safeRedirect = getSafeRedirectUrl(initialRedirectUrl);
+  const [redirectUrl, setRedirectUrl] = useState(getSafeRedirectUrl(initialRedirectUrl));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,6 +49,17 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Read redirect_url from window.location on mount without SSR mismatch
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const target = params.get("redirect_url");
+      if (target) {
+        setRedirectUrl(getSafeRedirectUrl(target));
+      }
+    }
+  }, []);
+
   // If already authenticated with Clerk, check authorization and route accordingly
   useEffect(() => {
     if (isSignedIn && user) {
@@ -56,19 +67,24 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
         .then((res) => res.json())
         .then((data) => {
           if (data.authorized) {
-            router.push(safeRedirect);
+            window.location.href = redirectUrl;
           } else {
-            router.push("/unauthorized");
+            window.location.href = "/unauthorized";
           }
         })
         .catch(() => {});
     }
-  }, [isSignedIn, user, router, safeRedirect]);
+  }, [isSignedIn, user, redirectUrl]);
 
   // Handle Initial Account Creation
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLoaded || loading) return;
+    if (loading) return;
+
+    if (!isLoaded || !signUp) {
+      setErrorMessage("Authentication service is initializing. Please click create account again.");
+      return;
+    }
 
     // Validate passwords match
     if (password !== confirmPassword) {
@@ -109,11 +125,11 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
         const authData = await authCheckRes.json();
 
         if (authData.authorized) {
-          setStatusMessage("Access granted! Redirecting...");
-          router.push(safeRedirect);
-          router.refresh();
+          setStatusMessage("Access granted! Entering admin portal...");
+          window.location.href = redirectUrl;
         } else {
-          router.push("/unauthorized");
+          setStatusMessage("Account not authorized. Redirecting...");
+          window.location.href = "/unauthorized";
         }
       } else {
         // Prepare verification as default next step
@@ -138,7 +154,12 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
   // Handle Email Verification Code (OTP)
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLoaded || loading) return;
+    if (loading) return;
+
+    if (!isLoaded || !signUp) {
+      setErrorMessage("Authentication service is initializing. Please click verify again.");
+      return;
+    }
 
     if (!verificationCode.trim()) {
       setErrorMessage("Please enter the verification code sent to your email.");
@@ -159,17 +180,15 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
         await setActive({ session: completeSignUp.createdSessionId });
 
         setStatusMessage("Checking admin access...");
-        // Check whether this new Clerk user has been granted admin authorization
         const authCheckRes = await fetch("/api/admin/check-auth");
         const authData = await authCheckRes.json();
 
         if (authData.authorized) {
-          setStatusMessage("Access granted! Redirecting...");
-          router.push(safeRedirect);
-          router.refresh();
+          setStatusMessage("Access granted! Entering admin portal...");
+          window.location.href = redirectUrl;
         } else {
-          // Newly created Clerk accounts are unauthorized by default until approved
-          router.push("/unauthorized");
+          setStatusMessage("Account created. Pending administrator authorization...");
+          window.location.href = "/unauthorized";
         }
       } else {
         setErrorMessage("Verification requires additional steps. Status: " + completeSignUp.status);
@@ -289,7 +308,7 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
             <button
               type="submit"
-              disabled={loading || !isLoaded}
+              disabled={loading}
               className="w-full h-12 bg-primary-600 hover:bg-primary-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-primary-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 mt-2"
             >
               {loading ? (
@@ -411,7 +430,7 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
             {/* Submit button */}
             <button
               type="submit"
-              disabled={loading || !isLoaded}
+              disabled={loading}
               className="w-full h-12 bg-primary-600 hover:bg-primary-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-primary-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 mt-3"
             >
               {loading ? (
@@ -514,7 +533,7 @@ export default function AdminSignUpPage() {
 
         {/* Bottom Footer */}
         <div className="relative z-10 flex items-center justify-between text-xs text-slate-400 border-t border-white/10 pt-6">
-          <span>&copy; {new Date().getFullYear()} EduEvents. All rights reserved.</span>
+          <span>&copy; 2026 EduEvents. All rights reserved.</span>
           <span>Version 2.4.0 (Production)</span>
         </div>
       </div>
