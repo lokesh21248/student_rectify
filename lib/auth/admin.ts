@@ -190,3 +190,6 @@ export function isAuthorizedForRoute(role: AdminRole, pathname: string): boolean
   // Default allow /admin for any valid admin
   return pathname.startsWith("/admin");
 }
+
+export { getSafeRedirectUrl } from "./redirect";
+

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth/admin";
+import { auth } from "@clerk/nextjs/server";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 
@@ -8,10 +9,19 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { userId } = await auth();
+
+  // If completely unauthenticated, redirect to sign-in
+  if (!userId) {
+    redirect("/admin/sign-in");
+  }
+
+  // If authenticated with Clerk, check administrator role & permissions
   const session = await getAdminSession();
 
+  // If authenticated but not authorized as admin, redirect to /unauthorized
   if (!session) {
-    redirect("/admin/sign-in");
+    redirect("/unauthorized");
   }
 
   return (

@@ -28,7 +28,7 @@ export async function GET() {
     response.headers.set("Cache-Control", "no-store");
     return response;
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to fetch events" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to fetch events" }, { status: error.statusCode || 500 });
   }
 }
 
@@ -179,6 +179,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, event });
   } catch (error: any) {
     console.error("Admin event POST catch:", error);
-    return NextResponse.json({ error: error.message || "Failed to create event" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to create event" }, { status: error.statusCode || 500 });
   }
 }

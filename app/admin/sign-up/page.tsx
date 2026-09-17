@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSignIn, useUser } from "@clerk/nextjs";
+import { useSignUp, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import {
   Building2,
@@ -18,39 +18,40 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  UserPlus,
+  LogIn,
+  KeyRound,
 } from "lucide-react";
 import { getSafeRedirectUrl } from "@/lib/auth/redirect";
 
-interface AdminSignInFormProps {
+interface AdminSignUpFormProps {
   initialRedirectUrl?: string;
 }
 
-export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: AdminSignInFormProps) {
+export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: AdminSignUpFormProps) {
   const router = useRouter();
-  const { isLoaded, signIn, setActive } = useSignIn();
+  const { isLoaded, signUp, setActive } = useSignUp();
   const { isSignedIn, user } = useUser();
 
   const safeRedirect = getSafeRedirectUrl(initialRedirectUrl);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Verification step state
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+
+  // Loading & status
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Password reset flow states
-  const [isResetMode, setIsResetMode] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
-  const [resetCode, setResetCode] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-
-  // Check if already signed in on mount
+  // If already authenticated with Clerk, check authorization and route accordingly
   useEffect(() => {
     if (isSignedIn && user) {
-      // Check if this existing session is authorized
       fetch("/api/admin/check-auth")
         .then((res) => res.json())
         .then((data) => {
@@ -60,32 +61,50 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
             router.push("/unauthorized");
           }
         })
-        .catch(() => {
-          // If check fails, do not loop
-        });
+        .catch(() => {});
     }
   }, [isSignedIn, user, router, safeRedirect]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle Initial Account Creation
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLoaded || loading) return;
 
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      setErrorMessage("Passwords do not match. Please re-enter your password.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters long.");
+      return;
+    }
+
     setLoading(true);
     setErrorMessage(null);
-    setStatusMessage("Verifying credentials with Clerk...");
+    setStatusMessage("Creating account...");
 
     try {
-      const result = await signIn.create({
-        identifier: email.trim(),
+      // 1. Create the user in Clerk
+      const result = await signUp.create({
+        emailAddress: email.trim(),
         password: password,
       });
 
-      if (result.status === "complete") {
+      // 2. Check if email verification code is required
+      if (result.status === "missing_requirements") {
+        setStatusMessage("Sending verification code to your email...");
+        await signUp.prepareEmailAddressVerification({
+          strategy: "email_code",
+        });
+        setPendingVerification(true);
+      } else if (result.status === "complete") {
+        // Signup completed without email verification code requirement
         setStatusMessage("Activating session...");
         await setActive({ session: result.createdSessionId });
 
-        setStatusMessage("Checking administrator permissions...");
-        // Verify server-side whether this account has admin role
+        setStatusMessage("Checking admin access...");
         const authCheckRes = await fetch("/api/admin/check-auth");
         const authData = await authCheckRes.json();
 
@@ -94,20 +113,21 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
           router.push(safeRedirect);
           router.refresh();
         } else {
-          // Normal Clerk user without admin role
           router.push("/unauthorized");
         }
-      } else if (result.status === "needs_first_factor" || result.status === "needs_second_factor") {
-        setErrorMessage("Additional two-factor verification is required for this account.");
       } else {
-        setErrorMessage("Sign in incomplete. Please check your credentials or verify your email.");
+        // Prepare verification as default next step
+        await signUp.prepareEmailAddressVerification({
+          strategy: "email_code",
+        });
+        setPendingVerification(true);
       }
     } catch (err: any) {
       const clerkError =
         err.errors?.[0]?.longMessage ||
         err.errors?.[0]?.message ||
         err.message ||
-        "Invalid email or password. Please verify your administrator credentials.";
+        "Unable to create account. Please check your information and try again.";
       setErrorMessage(clerkError);
     } finally {
       setLoading(false);
@@ -115,55 +135,71 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     }
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
+  // Handle Email Verification Code (OTP)
+  const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLoaded || loading) return;
-    if (!email.trim()) {
-      setErrorMessage("Please enter your admin email address first.");
+
+    if (!verificationCode.trim()) {
+      setErrorMessage("Please enter the verification code sent to your email.");
       return;
     }
 
     setLoading(true);
     setErrorMessage(null);
+    setStatusMessage("Verifying account...");
 
     try {
-      await signIn.create({
-        strategy: "reset_password_email_code",
-        identifier: email.trim(),
+      const completeSignUp = await signUp.attemptEmailAddressVerification({
+        code: verificationCode.trim(),
       });
-      setResetSent(true);
+
+      if (completeSignUp.status === "complete") {
+        setStatusMessage("Activating session...");
+        await setActive({ session: completeSignUp.createdSessionId });
+
+        setStatusMessage("Checking admin access...");
+        // Check whether this new Clerk user has been granted admin authorization
+        const authCheckRes = await fetch("/api/admin/check-auth");
+        const authData = await authCheckRes.json();
+
+        if (authData.authorized) {
+          setStatusMessage("Access granted! Redirecting...");
+          router.push(safeRedirect);
+          router.refresh();
+        } else {
+          // Newly created Clerk accounts are unauthorized by default until approved
+          router.push("/unauthorized");
+        }
+      } else {
+        setErrorMessage("Verification requires additional steps. Status: " + completeSignUp.status);
+      }
     } catch (err: any) {
-      setErrorMessage(
-        err.errors?.[0]?.message || err.message || "Failed to send password reset code."
-      );
+      const clerkError =
+        err.errors?.[0]?.longMessage ||
+        err.errors?.[0]?.message ||
+        err.message ||
+        "Invalid or expired verification code. Please request a new code.";
+      setErrorMessage(clerkError);
     } finally {
       setLoading(false);
+      setStatusMessage(null);
     }
   };
 
-  const handleResetSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Resend Verification Code
+  const handleResendCode = async () => {
     if (!isLoaded || loading) return;
-
     setLoading(true);
     setErrorMessage(null);
-
+    setStatusMessage("Resending verification code...");
     try {
-      const result = await signIn.attemptFirstFactor({
-        strategy: "reset_password_email_code",
-        code: resetCode.trim(),
-        password: newPassword,
+      await signUp.prepareEmailAddressVerification({
+        strategy: "email_code",
       });
-
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
-        router.push(safeRedirect);
-        router.refresh();
-      } else {
-        setErrorMessage("Password reset requires further verification.");
-      }
+      setStatusMessage("New verification code sent! Check your inbox.");
     } catch (err: any) {
-      setErrorMessage(err.errors?.[0]?.message || err.message || "Failed to reset password.");
+      setErrorMessage(err.errors?.[0]?.message || err.message || "Failed to resend code.");
     } finally {
       setLoading(false);
     }
@@ -187,7 +223,7 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
         </div>
       </div>
 
-      {/* Main Form Card */}
+      {/* Main Card */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-100/80 p-8 sm:p-10">
         <div className="mb-8">
           <div className="hidden lg:flex items-center gap-2 mb-4">
@@ -203,14 +239,22 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
           </div>
 
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
-            {isResetMode ? "Reset Password" : "Welcome Back!"}
+            {pendingVerification ? "Verify Your Email" : "Create Admin Account"}
           </h2>
           <p className="text-sm text-slate-500 mt-1.5">
-            {isResetMode
-              ? "Enter your email to receive a password reset code."
-              : "Sign in to your admin account to manage the platform."}
+            {pendingVerification
+              ? `We sent a 6-digit code to ${email}.`
+              : "Create your account to continue"}
           </p>
         </div>
+
+        {/* Status Alert */}
+        {statusMessage && !loading && (
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3 text-sm text-emerald-800">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 leading-relaxed">{statusMessage}</div>
+          </div>
+        )}
 
         {/* Error Alert */}
         {errorMessage && (
@@ -220,84 +264,24 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
           </div>
         )}
 
-        {/* Password Reset OTP Form */}
-        {isResetMode && resetSent ? (
-          <form onSubmit={handleResetSubmit} className="space-y-4">
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3 text-sm text-emerald-800 mb-4">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-              <div>
-                Verification code sent to <strong>{email}</strong>. Enter code and your new password.
-              </div>
-            </div>
-
+        {/* STEP 2: Verification Code Form */}
+        {pendingVerification ? (
+          <form onSubmit={handleVerifyCode} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
                 Verification Code
               </label>
-              <input
-                type="text"
-                required
-                autoComplete="one-time-code"
-                value={resetCode}
-                onChange={(e) => setResetCode(e.target.value)}
-                placeholder="123456"
-                className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all"
-                suppressHydrationWarning
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                New Password
-              </label>
-              <input
-                type="password"
-                required
-                autoComplete="new-password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all"
-                suppressHydrationWarning
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full h-11 bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm rounded-xl transition-all shadow-md shadow-primary-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Set New Password"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setIsResetMode(false);
-                setResetSent(false);
-              }}
-              className="w-full text-center text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors pt-2 cursor-pointer"
-            >
-              Back to Sign In
-            </button>
-          </form>
-        ) : isResetMode ? (
-          <form onSubmit={handleForgotPassword} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                Admin Email
-              </label>
               <div className="relative">
-                <Mail className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <KeyRound className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
-                  type="email"
+                  type="text"
                   required
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@eduevents.in"
+                  autoComplete="one-time-code"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  placeholder="123456"
                   style={{ paddingLeft: "2.75rem" }}
-                  className="w-full h-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all"
+                  className="w-full h-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 tracking-widest font-mono focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all placeholder:tracking-normal placeholder:font-sans"
                   suppressHydrationWarning
                 />
               </div>
@@ -305,22 +289,46 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full h-11 bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm rounded-xl transition-all shadow-md shadow-primary-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+              disabled={loading || !isLoaded}
+              className="w-full h-12 bg-primary-600 hover:bg-primary-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-primary-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 mt-2"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Reset Code"}
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{statusMessage || "Verifying account..."}</span>
+                </>
+              ) : (
+                <>
+                  <span>Verify & Complete Signup</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => setIsResetMode(false)}
-              className="w-full text-center text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors pt-2 cursor-pointer"
-            >
-              Back to Sign In
-            </button>
+            <div className="flex items-center justify-between pt-2">
+              <button
+                type="button"
+                onClick={handleResendCode}
+                disabled={loading}
+                className="text-xs font-semibold text-primary-600 hover:text-primary-700 transition-colors cursor-pointer"
+              >
+                Resend Code
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingVerification(false);
+                  setVerificationCode("");
+                }}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+              >
+                Change Email
+              </button>
+            </div>
           </form>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
+          /* STEP 1: Registration Form */
+          <form onSubmit={handleSignUp} className="space-y-4">
             {/* Email field */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
@@ -344,27 +352,18 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
             {/* Password field */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Password
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setIsResetMode(true)}
-                  className="text-xs font-semibold text-primary-600 hover:text-primary-700 transition-colors cursor-pointer"
-                >
-                  Forgot password?
-                </button>
-              </div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
+                Password
+              </label>
               <div className="relative">
                 <Lock className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPassword ? "text" : "password"}
                   required
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="At least 8 characters"
                   style={{ paddingLeft: "2.75rem", paddingRight: "2.75rem" }}
                   className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all placeholder:text-slate-400"
                   suppressHydrationWarning
@@ -380,34 +379,49 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
               </div>
             </div>
 
-            {/* Remember me */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-xs font-medium text-slate-600 cursor-pointer select-none">
+            {/* Confirm Password field */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <Lock className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded text-primary-600 border-slate-300 focus:ring-primary-500 cursor-pointer"
+                  type={showConfirmPassword ? "text" : "password"}
+                  required
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat your password"
+                  style={{ paddingLeft: "2.75rem", paddingRight: "2.75rem" }}
+                  className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all placeholder:text-slate-400"
                   suppressHydrationWarning
                 />
-                <span>Remember this device</span>
-              </label>
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
-            {/* Sign in button */}
+            {/* Submit button */}
             <button
               type="submit"
               disabled={loading || !isLoaded}
-              className="w-full h-12 bg-primary-600 hover:bg-primary-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-primary-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 mt-2"
+              className="w-full h-12 bg-primary-600 hover:bg-primary-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-primary-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 mt-3"
             >
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{statusMessage || "Signing in..."}</span>
+                  <span>{statusMessage || "Creating account..."}</span>
                 </>
               ) : (
                 <>
-                  <span>Sign In to Admin Portal</span>
+                  <span>Create Admin Account</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -415,16 +429,16 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
           </form>
         )}
 
-        {/* Create Account Link */}
+        {/* Sign In Link */}
         <div className="mt-6 pt-5 border-t border-slate-100 text-center">
           <p className="text-xs text-slate-600">
-            Don&apos;t have an account?{" "}
+            Already have an account?{" "}
             <Link
-              href={`/admin/sign-up${initialRedirectUrl !== "/admin/dashboard" ? `?redirect_url=${encodeURIComponent(initialRedirectUrl)}` : ""}`}
+              href={`/admin/sign-in${initialRedirectUrl !== "/admin/dashboard" ? `?redirect_url=${encodeURIComponent(initialRedirectUrl)}` : ""}`}
               className="font-bold text-primary-600 hover:text-primary-700 transition-colors inline-flex items-center gap-1"
             >
-              <UserPlus className="w-3.5 h-3.5" />
-              Create Admin Account
+              <LogIn className="w-3.5 h-3.5" />
+              Sign In
             </Link>
           </p>
           <p className="text-[11px] text-slate-400 mt-2">
@@ -436,7 +450,7 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
   );
 }
 
-export default function AdminSignInPage() {
+export default function AdminSignUpPage() {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* LEFT SIDE: Blue visual branding */}
@@ -507,7 +521,7 @@ export default function AdminSignInPage() {
 
       {/* RIGHT SIDE: Authentication Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
-        <AdminSignInForm />
+        <AdminSignUpForm />
       </div>
     </div>
   );

@@ -29,7 +29,7 @@ export async function GET() {
 
     return NextResponse.json({ certificates: certsResult.data || [] });
   } catch (error: any) {
-    return NextResponse.json({ certificates: [], error: error.message }, { status: 200 });
+    return NextResponse.json({ certificates: [], error: error.message }, { status: error.statusCode || 500 });
   }
 }
 
@@ -102,6 +102,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, certificate: cert });
   } catch (error: any) {
     console.error("Issue certificate error catch:", error);
-    return NextResponse.json({ error: error.message || "Failed to issue certificate" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to issue certificate" }, { status: error.statusCode || 500 });
   }
 }

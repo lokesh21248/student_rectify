@@ -26,8 +26,8 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     return NextResponse.redirect(new URL(destination, req.url));
   }
 
-  // Handle /admin/sign-in: If already authenticated with admin role, redirect to /admin/dashboard
-  if (pathname === "/admin/sign-in") {
+  // Handle public auth routes: /admin/sign-in and /admin/sign-up
+  if (pathname === "/admin/sign-in" || pathname === "/admin/sign-up") {
     if (authObj.userId) {
       const role = ((authObj.sessionClaims?.metadata as any)?.role ||
         (authObj.sessionClaims as any)?.role ||
@@ -37,12 +37,13 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
         return NextResponse.redirect(new URL("/admin/dashboard", req.url));
       }
     }
+    // Allow unauthenticated visitors to view sign-in and sign-up
     return NextResponse.next();
   }
 
-  // Protect all /admin/* routes
+  // Protect all other /admin/* routes
   if (pathname.startsWith("/admin")) {
-    // 1. Unauthenticated user -> redirect to /admin/sign-in
+    // 1. Unauthenticated user -> redirect to /admin/sign-in with safe redirect_url
     if (!authObj.userId) {
       const signInUrl = new URL("/admin/sign-in", req.url);
       signInUrl.searchParams.set("redirect_url", pathname);

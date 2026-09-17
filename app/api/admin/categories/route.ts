@@ -42,7 +42,7 @@ export async function GET() {
     return response;
   } catch (error: any) {
     console.error("Admin categories GET catch:", error);
-    return NextResponse.json({ error: error.message || "Failed to fetch categories" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to fetch categories" }, { status: error.statusCode || 500 });
   }
 }
 
@@ -95,6 +95,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, category: data });
   } catch (error: any) {
     console.error("Admin category POST catch:", error);
-    return NextResponse.json({ error: error.message || "Failed to create category" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to create category" }, { status: error.statusCode || 500 });
   }
 }
