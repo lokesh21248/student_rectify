@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { requireAdminRole } from "@/lib/auth/admin";
 
 export async function GET() {
   try {
+    await requireAdminRole(["SUPER_ADMIN", "ADMIN", "EVENT_MANAGER"]);
     const supabase = createAdminClient();
 
     // Run both certificate sources in parallel
@@ -33,6 +35,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAdminRole(["SUPER_ADMIN", "ADMIN", "EVENT_MANAGER"]);
     const body = await req.json();
     const {
       recipient_name,

@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { generateSlug } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
+import { requireAdminRole } from "@/lib/auth/admin";
 
 export async function GET() {
   try {
+    await requireAdminRole(["SUPER_ADMIN", "ADMIN", "EVENT_MANAGER", "SUPPORT"]);
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("events")
@@ -32,6 +34,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAdminRole(["SUPER_ADMIN", "ADMIN", "EVENT_MANAGER"]);
     const body = await req.json();
     const {
       title,

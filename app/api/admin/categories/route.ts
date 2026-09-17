@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { requireAdminRole } from "@/lib/auth/admin";
 
 export async function GET() {
   try {
+    await requireAdminRole(["SUPER_ADMIN", "ADMIN"]);
     const supabase = createAdminClient();
 
     // Fetch categories and event counts in parallel with a single batched count
@@ -46,6 +48,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAdminRole(["SUPER_ADMIN", "ADMIN"]);
     const body = await req.json();
     const { name, slug, description, icon, color, sort_order, is_active, image_url, icon_type } = body;
 

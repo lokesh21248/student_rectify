@@ -25,6 +25,12 @@ import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import Chip from "@mui/material/Chip";
 import { useTheme } from "@mui/material/styles";
+import {
+  useUser,
+  SignInButton,
+  SignUpButton,
+  UserButton,
+} from "@clerk/nextjs";
 
 const navLinks = [
   { href: "/", label: "Home", icon: Home },
@@ -37,10 +43,13 @@ const navLinks = [
 export function Navigation() {
   const pathname = usePathname();
   const theme = useTheme();
+  const { isLoaded: userLoaded, isSignedIn } = useUser();
+  const [mounted, setMounted] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
@@ -146,10 +155,83 @@ export function Navigation() {
                 Search events…
               </Button>
 
+              {/* Clerk Authentication Integration */}
+              {mounted && userLoaded && (
+                !isSignedIn ? (
+                  <>
+                    <SignInButton mode="modal">
+                      <Button
+                        variant="text"
+                        color="inherit"
+                        sx={{
+                          display: { xs: "none", sm: "flex" },
+                          borderRadius: "12px",
+                          px: 1.5,
+                          py: 0.5,
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          textTransform: "none",
+                          color: "text.primary",
+                        }}
+                      >
+                        Sign In
+                      </Button>
+                    </SignInButton>
+
+                    <SignUpButton mode="modal">
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        sx={{
+                          display: { xs: "none", sm: "flex" },
+                          borderRadius: "12px",
+                          px: 1.5,
+                          py: 0.5,
+                          fontSize: "0.75rem",
+                          fontWeight: 700,
+                          textTransform: "none",
+                        }}
+                      >
+                        Sign Up
+                      </Button>
+                    </SignUpButton>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      component={Link}
+                      href="/my-events"
+                      variant="text"
+                      color="inherit"
+                      sx={{
+                        display: { xs: "none", lg: "flex" },
+                        borderRadius: "12px",
+                        px: 1.5,
+                        py: 0.5,
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        textTransform: "none",
+                        color: "text.secondary",
+                      }}
+                    >
+                      My Events
+                    </Button>
+                    <UserButton
+                      afterSignOutUrl="/"
+                      appearance={{
+                        elements: {
+                          avatarBox: "w-8 h-8 rounded-xl",
+                        },
+                      }}
+                    />
+                  </div>
+                )
+              )}
+
               {!pathname.startsWith("/admin") ? (
                 <Button
                   component={Link}
-                  href="/admin"
+                  href="/admin/dashboard"
                   variant="contained"
                   sx={{
                     display: { xs: "none", md: "flex" },
@@ -246,10 +328,35 @@ export function Navigation() {
                     </Button>
                   );
                 })}
+
+                {/* Mobile Clerk Sign In / Sign Up */}
+                {mounted && userLoaded && !isSignedIn && (
+                  <div className="pt-2 grid grid-cols-2 gap-2">
+                    <SignInButton mode="modal">
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        sx={{ borderRadius: "12px", py: 1, fontWeight: 700 }}
+                      >
+                        Sign In
+                      </Button>
+                    </SignInButton>
+                    <SignUpButton mode="modal">
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        sx={{ borderRadius: "12px", py: 1, fontWeight: 700 }}
+                      >
+                        Sign Up
+                      </Button>
+                    </SignUpButton>
+                  </div>
+                )}
+
                 <div className="pt-2">
                   <Button
                     component={Link}
-                    href="/admin"
+                    href="/admin/dashboard"
                     fullWidth
                     variant="contained"
                     startIcon={<Shield size={16} color={theme.palette.primary.light} />}

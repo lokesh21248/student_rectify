@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { requireAdminRole } from "@/lib/auth/admin";
 
 export async function GET() {
+  await requireAdminRole(["SUPER_ADMIN", "ADMIN", "COLLEGE_MANAGER"]);
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("colleges")
@@ -22,6 +24,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    await requireAdminRole(["SUPER_ADMIN", "ADMIN", "COLLEGE_MANAGER"]);
     const supabase = createAdminClient();
     const body = await req.json();
     
