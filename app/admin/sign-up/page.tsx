@@ -120,14 +120,14 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
       // 2. Check if email verification code is required
       if (result.status === "missing_requirements") {
         setStatusMessage("Sending verification code to your email...");
-        await signUp.prepareEmailAddressVerification({
+        await activeSignUp.prepareEmailAddressVerification({
           strategy: "email_code",
         });
         setPendingVerification(true);
       } else if (result.status === "complete") {
         // Signup completed without email verification code requirement
         setStatusMessage("Activating session...");
-        await setActive({ session: result.createdSessionId });
+        await activeSetActive({ session: result.createdSessionId });
 
         setStatusMessage("Checking admin access...");
         const authCheckRes = await fetch("/api/admin/check-auth");
@@ -142,12 +142,13 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
         }
       } else {
         // Prepare verification as default next step
-        await signUp.prepareEmailAddressVerification({
+        await activeSignUp.prepareEmailAddressVerification({
           strategy: "email_code",
         });
         setPendingVerification(true);
       }
     } catch (err: any) {
+      console.error("Admin sign-up error:", err);
       const clerkError =
         err.errors?.[0]?.longMessage ||
         err.errors?.[0]?.message ||
@@ -444,6 +445,9 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
                 </button>
               </div>
             </div>
+
+            {/* CAPTCHA Widget mount point required by Clerk Bot Protection */}
+            <div id="clerk-captcha" className="my-2" suppressHydrationWarning />
 
             {/* Submit button */}
             <button

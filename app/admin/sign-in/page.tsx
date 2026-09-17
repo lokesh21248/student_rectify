@@ -413,6 +413,9 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
               </label>
             </div>
 
+            {/* CAPTCHA Widget mount point required by Clerk Bot Protection */}
+            <div id="clerk-captcha" className="my-2" suppressHydrationWarning />
+
             {/* Sign in button */}
             <button
               type="submit"
