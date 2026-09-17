@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   LogIn,
   KeyRound,
+  Check,
 } from "lucide-react";
 import { getSafeRedirectUrl } from "@/lib/auth/redirect";
 
@@ -76,6 +77,37 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     }
   }, [isSignedIn, user, redirectUrl]);
 
+  // Password evaluation criteria
+  const hasMinLength = password.length >= 8;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = /[^A-Za-z0-9]/.test(password);
+
+  const passedCount = [hasMinLength, hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(Boolean).length;
+
+  let strengthLabel = "Weak";
+  let strengthColor = "text-red-500";
+  let strengthScore = 1;
+
+  if (password.length === 0) {
+    strengthScore = 0;
+    strengthLabel = "No password";
+    strengthColor = "text-slate-400";
+  } else if (password.length >= 8 && passedCount >= 4) {
+    strengthScore = 3;
+    strengthLabel = "Strong";
+    strengthColor = "text-emerald-600";
+  } else if (password.length >= 8 && passedCount >= 2) {
+    strengthScore = 2;
+    strengthLabel = "Medium";
+    strengthColor = "text-amber-500";
+  } else {
+    strengthScore = 1;
+    strengthLabel = "Weak";
+    strengthColor = "text-red-500";
+  }
+
   // Handle Initial Account Creation
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,14 +127,15 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
       }
     }
 
-    // Validate passwords match
-    if (password !== confirmPassword) {
-      setErrorMessage("Passwords do not match. Please re-enter your password.");
+    // Validate minimum 8 characters
+    if (password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters long.");
       return;
     }
 
-    if (password.length < 8) {
-      setErrorMessage("Password must be at least 8 characters long.");
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      setErrorMessage("Passwords do not match. Please re-enter your password.");
       return;
     }
 
@@ -149,12 +182,23 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
       }
     } catch (err: any) {
       console.error("Admin sign-up error:", err);
-      const clerkError =
-        err.errors?.[0]?.longMessage ||
-        err.errors?.[0]?.message ||
-        err.message ||
-        "Unable to create account. Please check your information and try again.";
-      setErrorMessage(clerkError);
+      const firstError = err.errors?.[0];
+      const code = firstError?.code;
+      const message = firstError?.longMessage || firstError?.message || err.message;
+
+      if (code === "form_password_length_too_short" && (message?.includes("15") || firstError?.meta?.min_length === 15)) {
+        setErrorMessage(
+          "Clerk instance password policy currently requires 15+ characters. To allow 8+ character passwords (such as Lokesh@21246), update the Minimum Password Length to 8 in your Clerk Dashboard under User & Authentication > Password."
+        );
+      } else if (code === "form_password_pwned") {
+        setErrorMessage(
+          "This password has appeared in a data breach and cannot be used for security reasons. Please choose a different strong password."
+        );
+      } else if (code === "form_identifier_exists") {
+        setErrorMessage("An account with this email address already exists. Please sign in instead.");
+      } else {
+        setErrorMessage(message || "Unable to create account. Please check your information and try again.");
+      }
     } finally {
       setLoading(false);
       setStatusMessage(null);
@@ -415,6 +459,43 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+
+              {/* Password Strength Indicator & Requirements Checklist */}
+              {password.length > 0 && (
+                <div className="mt-2.5 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500 font-medium">Password strength:</span>
+                    <span className={`font-bold ${strengthColor}`}>{strengthLabel}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 h-1.5 w-full">
+                    <div className={`h-full rounded-full transition-all duration-300 ${strengthScore >= 1 ? (strengthScore === 1 ? "bg-red-500" : strengthScore === 2 ? "bg-amber-500" : "bg-emerald-500") : "bg-slate-200"}`} />
+                    <div className={`h-full rounded-full transition-all duration-300 ${strengthScore >= 2 ? (strengthScore === 2 ? "bg-amber-500" : "bg-emerald-500") : "bg-slate-200"}`} />
+                    <div className={`h-full rounded-full transition-all duration-300 ${strengthScore >= 3 ? "bg-emerald-500" : "bg-slate-200"}`} />
+                  </div>
+                  <div className="pt-1.5 border-t border-slate-200/60 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                    <div className={`flex items-center gap-1.5 transition-colors ${hasMinLength ? "text-emerald-700 font-medium" : "text-slate-400"}`}>
+                      {hasMinLength ? <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-slate-300">•</span>}
+                      <span>8+ characters</span>
+                    </div>
+                    <div className={`flex items-center gap-1.5 transition-colors ${hasUppercase ? "text-emerald-700 font-medium" : "text-slate-400"}`}>
+                      {hasUppercase ? <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-slate-300">•</span>}
+                      <span>Uppercase letter</span>
+                    </div>
+                    <div className={`flex items-center gap-1.5 transition-colors ${hasLowercase ? "text-emerald-700 font-medium" : "text-slate-400"}`}>
+                      {hasLowercase ? <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-slate-300">•</span>}
+                      <span>Lowercase letter</span>
+                    </div>
+                    <div className={`flex items-center gap-1.5 transition-colors ${hasNumber ? "text-emerald-700 font-medium" : "text-slate-400"}`}>
+                      {hasNumber ? <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-slate-300">•</span>}
+                      <span>Number (0-9)</span>
+                    </div>
+                    <div className={`flex items-center gap-1.5 transition-colors ${hasSpecial ? "text-emerald-700 font-medium" : "text-slate-400"} sm:col-span-2`}>
+                      {hasSpecial ? <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-slate-300">•</span>}
+                      <span>Special character (!@#$%...)</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Confirm Password field */}
@@ -444,10 +525,24 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-            </div>
 
-            {/* CAPTCHA Widget mount point required by Clerk Bot Protection */}
-            <div id="clerk-captcha" className="my-2" suppressHydrationWarning />
+              {/* Confirm Password matching status */}
+              {confirmPassword.length > 0 && (
+                <div className="mt-1.5 text-xs flex items-center gap-1.5">
+                  {password === confirmPassword ? (
+                    <span className="text-emerald-600 font-medium flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                      Passwords match
+                    </span>
+                  ) : (
+                    <span className="text-red-500 font-medium flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                      Passwords do not match
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Submit button */}
             <button
