@@ -78,9 +78,18 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     e.preventDefault();
     if (loading) return;
 
-    if (!isLoaded || !signIn) {
-      setErrorMessage("Authentication service is initializing. Please click sign in again.");
-      return;
+    let activeSignIn = signIn;
+    let activeSetActive = setActive;
+
+    if (!isLoaded || !activeSignIn) {
+      const clerk = typeof window !== "undefined" ? (window as any).Clerk : null;
+      if (clerk?.client?.signIn) {
+        activeSignIn = clerk.client.signIn;
+        activeSetActive = (opts: any) => clerk.setActive(opts);
+      } else {
+        setErrorMessage("Authentication service is initializing. Please wait a moment and click sign in again.");
+        return;
+      }
     }
 
     setLoading(true);
@@ -88,14 +97,14 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     setStatusMessage("Verifying credentials with Clerk...");
 
     try {
-      const result = await signIn.create({
+      const result = await activeSignIn.create({
         identifier: email.trim(),
         password: password,
       });
 
       if (result.status === "complete") {
         setStatusMessage("Activating session...");
-        await setActive({ session: result.createdSessionId });
+        await activeSetActive({ session: result.createdSessionId });
 
         setStatusMessage("Checking administrator permissions...");
         const authCheckRes = await fetch("/api/admin/check-auth");
@@ -465,9 +474,9 @@ export default function AdminSignInPage() {
               <span className="text-2xl font-black tracking-tight text-white">
                 Edu<span className="text-primary-400">Events</span>
               </span>
-              <p className="text-[11px] text-slate-400 tracking-wider uppercase font-semibold">
+              <span className="block text-[11px] text-slate-400 tracking-wider uppercase font-semibold">
                 College Event Platform
-              </p>
+              </span>
             </div>
           </Link>
         </div>

@@ -81,9 +81,18 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     e.preventDefault();
     if (loading) return;
 
-    if (!isLoaded || !signUp) {
-      setErrorMessage("Authentication service is initializing. Please click create account again.");
-      return;
+    let activeSignUp = signUp;
+    let activeSetActive = setActive;
+
+    if (!isLoaded || !activeSignUp) {
+      const clerk = typeof window !== "undefined" ? (window as any).Clerk : null;
+      if (clerk?.client?.signUp) {
+        activeSignUp = clerk.client.signUp;
+        activeSetActive = (opts: any) => clerk.setActive(opts);
+      } else {
+        setErrorMessage("Authentication service is initializing. Please wait a moment and click create account again.");
+        return;
+      }
     }
 
     // Validate passwords match
@@ -103,7 +112,7 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
     try {
       // 1. Create the user in Clerk
-      const result = await signUp.create({
+      const result = await activeSignUp.create({
         emailAddress: email.trim(),
         password: password,
       });
@@ -156,9 +165,18 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     e.preventDefault();
     if (loading) return;
 
-    if (!isLoaded || !signUp) {
-      setErrorMessage("Authentication service is initializing. Please click verify again.");
-      return;
+    let activeSignUp = signUp;
+    let activeSetActive = setActive;
+
+    if (!isLoaded || !activeSignUp) {
+      const clerk = typeof window !== "undefined" ? (window as any).Clerk : null;
+      if (clerk?.client?.signUp) {
+        activeSignUp = clerk.client.signUp;
+        activeSetActive = (opts: any) => clerk.setActive(opts);
+      } else {
+        setErrorMessage("Authentication service is initializing. Please wait a moment and click verify again.");
+        return;
+      }
     }
 
     if (!verificationCode.trim()) {
@@ -171,7 +189,7 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     setStatusMessage("Verifying account...");
 
     try {
-      const completeSignUp = await signUp.attemptEmailAddressVerification({
+      const completeSignUp = await activeSignUp.attemptEmailAddressVerification({
         code: verificationCode.trim(),
       });
 
@@ -488,9 +506,9 @@ export default function AdminSignUpPage() {
               <span className="text-2xl font-black tracking-tight text-white">
                 Edu<span className="text-primary-400">Events</span>
               </span>
-              <p className="text-[11px] text-slate-400 tracking-wider uppercase font-semibold">
+              <span className="block text-[11px] text-slate-400 tracking-wider uppercase font-semibold">
                 College Event Platform
-              </p>
+              </span>
             </div>
           </Link>
         </div>

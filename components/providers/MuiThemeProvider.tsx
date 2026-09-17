@@ -1,7 +1,6 @@
 "use client";
 
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import CssBaseline from "@mui/material/CssBaseline";
 import { ReactNode } from "react";
 
 const theme = createTheme({
@@ -78,9 +77,6 @@ const theme = createTheme({
     "0 24px 64px 0 rgb(0 0 0 / 0.20)",
   ],
   components: {
-    MuiCssBaseline: {
-      styleOverrides: { body: { margin: 0, padding: 0 } },
-    },
     MuiButton: {
       styleOverrides: {
         root: {
@@ -180,7 +176,6 @@ const theme = createTheme({
 export function MuiThemeProvider({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline />
       {children}
     </ThemeProvider>
   );
