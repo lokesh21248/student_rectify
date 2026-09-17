@@ -50,6 +50,23 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Dynamic Clerk backend password policy detection
+  const [clerkMinLength, setClerkMinLength] = useState<number>(8);
+  const [isClerk15Active, setIsClerk15Active] = useState<boolean>(false);
+
+  // Fetch Clerk backend environment policy
+  useEffect(() => {
+    fetch("/api/admin/clerk-policy")
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data?.minLength === "number") {
+          setClerkMinLength(data.minLength);
+          setIsClerk15Active(data.isClerk15Policy || data.minLength > 8);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Read redirect_url from window.location on mount without SSR mismatch
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -77,14 +94,14 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     }
   }, [isSignedIn, user, redirectUrl]);
 
-  // Password evaluation criteria
-  const hasMinLength = password.length >= 8;
+  // Password evaluation criteria (8-char application baseline or active Clerk min_length)
+  const hasMinLength = password.length >= (clerkMinLength || 8);
   const hasUppercase = /[A-Z]/.test(password);
   const hasLowercase = /[a-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
   const hasSpecial = /[^A-Za-z0-9]/.test(password);
 
-  const passedCount = [hasMinLength, hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(Boolean).length;
+  const passedCount = [password.length >= 8, hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(Boolean).length;
 
   let strengthLabel = "Weak";
   let strengthColor = "text-red-500";
@@ -127,9 +144,16 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
       }
     }
 
-    // Validate minimum 8 characters
-    if (password.length < 8) {
-      setErrorMessage("Password must be at least 8 characters long.");
+    // Validate minimum characters (synchronized with Clerk backend requirement)
+    const requiredLength = clerkMinLength || 8;
+    if (password.length < requiredLength) {
+      if (requiredLength > 8) {
+        setErrorMessage(
+          `Your Clerk project currently requires ${requiredLength}+ characters. In your Clerk Dashboard under User & Authentication > Password, set Minimum password length to 8 to allow shorter passwords like Lokesh@21246.`
+        );
+      } else {
+        setErrorMessage("Password must be at least 8 characters long.");
+      }
       return;
     }
 
@@ -346,6 +370,28 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
           </div>
         )}
 
+        {/* Clerk Backend Policy Notice */}
+        {isClerk15Active && !pendingVerification && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 leading-relaxed space-y-1.5">
+            <div className="flex items-center gap-1.5 font-bold text-amber-800">
+              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <span>Clerk Backend Password Setting (15+ Characters)</span>
+            </div>
+            <p>
+              Your Clerk project currently has <strong>Minimum password length: 15</strong> configured in Clerk. To accept 8+ character passwords (such as <span className="font-mono font-bold text-amber-950">Lokesh@21246</span>), set <strong>Minimum password length</strong> to <strong>8</strong> in your{" "}
+              <a
+                href="https://dashboard.clerk.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold underline hover:text-amber-950"
+              >
+                Clerk Dashboard
+              </a>{" "}
+              under <em>Configure &gt; User &amp; Authentication &gt; Password</em>.
+            </p>
+          </div>
+        )}
+
         {/* STEP 2: Verification Code Form */}
         {pendingVerification ? (
           <form onSubmit={handleVerifyCode} className="space-y-4">
@@ -475,7 +521,7 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
                   <div className="pt-1.5 border-t border-slate-200/60 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
                     <div className={`flex items-center gap-1.5 transition-colors ${hasMinLength ? "text-emerald-700 font-medium" : "text-slate-400"}`}>
                       {hasMinLength ? <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-slate-300">•</span>}
-                      <span>8+ characters</span>
+                      <span>{clerkMinLength > 8 ? `${clerkMinLength}+ characters (Clerk setting)` : "8+ characters"}</span>
                     </div>
                     <div className={`flex items-center gap-1.5 transition-colors ${hasUppercase ? "text-emerald-700 font-medium" : "text-slate-400"}`}>
                       {hasUppercase ? <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-slate-300">•</span>}
