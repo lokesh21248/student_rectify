@@ -183,7 +183,7 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     <div className="w-full max-w-md mx-auto" suppressHydrationWarning>
       {/* Mobile Branding Header */}
       <div className="lg:hidden text-center mb-8">
-        <Link href="/" className="inline-flex items-center gap-2 mb-3">
+        <Link href="/" prefetch={false} className="inline-flex items-center gap-2 mb-3">
           <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm">
             E
           </div>
@@ -457,7 +457,7 @@ export default function AdminSignInPage() {
 
         {/* Top Header */}
         <div className="relative z-10">
-          <Link href="/" className="inline-flex items-center gap-3">
+          <Link href="/" prefetch={false} className="inline-flex items-center gap-3">
             <div className="w-11 h-11 bg-primary-600 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary-600/30">
               E
             </div>
