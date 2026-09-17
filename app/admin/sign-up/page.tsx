@@ -50,23 +50,6 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Dynamic Clerk backend password policy detection
-  const [clerkMinLength, setClerkMinLength] = useState<number>(8);
-  const [isClerk15Active, setIsClerk15Active] = useState<boolean>(false);
-
-  // Fetch Clerk backend environment policy
-  useEffect(() => {
-    fetch("/api/admin/clerk-policy")
-      .then((res) => res.json())
-      .then((data) => {
-        if (typeof data?.minLength === "number") {
-          setClerkMinLength(data.minLength);
-          setIsClerk15Active(data.isClerk15Policy || data.minLength > 8);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
   // Read redirect_url from window.location on mount without SSR mismatch
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -94,37 +77,6 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     }
   }, [isSignedIn, user, redirectUrl]);
 
-  // Password evaluation criteria (8-char application baseline or active Clerk min_length)
-  const hasMinLength = password.length >= (clerkMinLength || 8);
-  const hasUppercase = /[A-Z]/.test(password);
-  const hasLowercase = /[a-z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSpecial = /[^A-Za-z0-9]/.test(password);
-
-  const passedCount = [password.length >= 8, hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(Boolean).length;
-
-  let strengthLabel = "Weak";
-  let strengthColor = "text-red-500";
-  let strengthScore = 1;
-
-  if (password.length === 0) {
-    strengthScore = 0;
-    strengthLabel = "No password";
-    strengthColor = "text-slate-400";
-  } else if (password.length >= 8 && passedCount >= 4) {
-    strengthScore = 3;
-    strengthLabel = "Strong";
-    strengthColor = "text-emerald-600";
-  } else if (password.length >= 8 && passedCount >= 2) {
-    strengthScore = 2;
-    strengthLabel = "Medium";
-    strengthColor = "text-amber-500";
-  } else {
-    strengthScore = 1;
-    strengthLabel = "Weak";
-    strengthColor = "text-red-500";
-  }
-
   // Handle Initial Account Creation
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,16 +96,9 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
       }
     }
 
-    // Validate minimum characters (synchronized with Clerk backend requirement)
-    const requiredLength = clerkMinLength || 8;
-    if (password.length < requiredLength) {
-      if (requiredLength > 8) {
-        setErrorMessage(
-          `Your Clerk project currently requires ${requiredLength}+ characters. In your Clerk Dashboard under User & Authentication > Password, set Minimum password length to 8 to allow shorter passwords like Lokesh@21246.`
-        );
-      } else {
-        setErrorMessage("Password must be at least 8 characters long.");
-      }
+    // Validate minimum 8 characters ONLY
+    if (password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters.");
       return;
     }
 
@@ -210,13 +155,9 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
       const code = firstError?.code;
       const message = firstError?.longMessage || firstError?.message || err.message;
 
-      if (code === "form_password_length_too_short" && (message?.includes("15") || firstError?.meta?.min_length === 15)) {
+      if (code === "form_password_pwned") {
         setErrorMessage(
-          "Clerk instance password policy currently requires 15+ characters. To allow 8+ character passwords (such as Lokesh@21246), update the Minimum Password Length to 8 in your Clerk Dashboard under User & Authentication > Password."
-        );
-      } else if (code === "form_password_pwned") {
-        setErrorMessage(
-          "This password has appeared in a data breach and cannot be used for security reasons. Please choose a different strong password."
+          "This password has appeared in a data breach and cannot be used for security reasons. Please choose a different password."
         );
       } else if (code === "form_identifier_exists") {
         setErrorMessage("An account with this email address already exists. Please sign in instead.");
@@ -370,28 +311,6 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
           </div>
         )}
 
-        {/* Clerk Backend Policy Notice */}
-        {isClerk15Active && !pendingVerification && (
-          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 leading-relaxed space-y-1.5">
-            <div className="flex items-center gap-1.5 font-bold text-amber-800">
-              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-              <span>Clerk Backend Password Setting (15+ Characters)</span>
-            </div>
-            <p>
-              Your Clerk project currently has <strong>Minimum password length: 15</strong> configured in Clerk. To accept 8+ character passwords (such as <span className="font-mono font-bold text-amber-950">Lokesh@21246</span>), set <strong>Minimum password length</strong> to <strong>8</strong> in your{" "}
-              <a
-                href="https://dashboard.clerk.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold underline hover:text-amber-950"
-              >
-                Clerk Dashboard
-              </a>{" "}
-              under <em>Configure &gt; User &amp; Authentication &gt; Password</em>.
-            </p>
-          </div>
-        )}
-
         {/* STEP 2: Verification Code Form */}
         {pendingVerification ? (
           <form onSubmit={handleVerifyCode} className="space-y-4">
@@ -491,7 +410,7 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 8 characters"
+                  placeholder="Minimum 8 characters"
                   style={{ paddingLeft: "2.75rem", paddingRight: "2.75rem" }}
                   className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all placeholder:text-slate-400"
                   suppressHydrationWarning
@@ -505,43 +424,9 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-
-              {/* Password Strength Indicator & Requirements Checklist */}
-              {password.length > 0 && (
-                <div className="mt-2.5 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500 font-medium">Password strength:</span>
-                    <span className={`font-bold ${strengthColor}`}>{strengthLabel}</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5 h-1.5 w-full">
-                    <div className={`h-full rounded-full transition-all duration-300 ${strengthScore >= 1 ? (strengthScore === 1 ? "bg-red-500" : strengthScore === 2 ? "bg-amber-500" : "bg-emerald-500") : "bg-slate-200"}`} />
-                    <div className={`h-full rounded-full transition-all duration-300 ${strengthScore >= 2 ? (strengthScore === 2 ? "bg-amber-500" : "bg-emerald-500") : "bg-slate-200"}`} />
-                    <div className={`h-full rounded-full transition-all duration-300 ${strengthScore >= 3 ? "bg-emerald-500" : "bg-slate-200"}`} />
-                  </div>
-                  <div className="pt-1.5 border-t border-slate-200/60 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
-                    <div className={`flex items-center gap-1.5 transition-colors ${hasMinLength ? "text-emerald-700 font-medium" : "text-slate-400"}`}>
-                      {hasMinLength ? <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-slate-300">•</span>}
-                      <span>{clerkMinLength > 8 ? `${clerkMinLength}+ characters (Clerk setting)` : "8+ characters"}</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 transition-colors ${hasUppercase ? "text-emerald-700 font-medium" : "text-slate-400"}`}>
-                      {hasUppercase ? <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-slate-300">•</span>}
-                      <span>Uppercase letter</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 transition-colors ${hasLowercase ? "text-emerald-700 font-medium" : "text-slate-400"}`}>
-                      {hasLowercase ? <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-slate-300">•</span>}
-                      <span>Lowercase letter</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 transition-colors ${hasNumber ? "text-emerald-700 font-medium" : "text-slate-400"}`}>
-                      {hasNumber ? <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-slate-300">•</span>}
-                      <span>Number (0-9)</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 transition-colors ${hasSpecial ? "text-emerald-700 font-medium" : "text-slate-400"} sm:col-span-2`}>
-                      {hasSpecial ? <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-slate-300">•</span>}
-                      <span>Special character (!@#$%...)</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <p className="text-xs text-slate-400 mt-1.5 font-normal">
+                Minimum 8 characters
+              </p>
             </div>
 
             {/* Confirm Password field */}
