@@ -149,6 +149,15 @@ export async function getAdminSession(): Promise<AdminSession | null> {
   };
 }
 
+export class AuthError extends Error {
+  statusCode: number;
+  constructor(message: string, statusCode: number) {
+    super(message);
+    this.statusCode = statusCode;
+    this.name = "AuthError";
+  }
+}
+
 /**
  * Enforce minimum role in Route Handlers or Server Components.
  * Throws an Error with 401/403 status if unauthorized.
@@ -157,17 +166,13 @@ export async function requireAdminRole(allowedRoles?: AdminRole[]): Promise<Admi
   const session = await getAdminSession();
 
   if (!session) {
-    const error: any = new Error("Unauthorized: Admin authentication required");
-    error.statusCode = 401;
-    throw error;
+    throw new AuthError("Unauthorized: Admin authentication required", 401);
   }
 
   if (allowedRoles && allowedRoles.length > 0) {
     // SUPER_ADMIN has access to everything
     if (session.role !== "SUPER_ADMIN" && !allowedRoles.includes(session.role)) {
-      const error: any = new Error("Forbidden: Insufficient administrator permissions");
-      error.statusCode = 403;
-      throw error;
+      throw new AuthError("Forbidden: Insufficient administrator permissions", 403);
     }
   }
 

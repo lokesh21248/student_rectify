@@ -16,9 +16,15 @@ const ROUTE_RESTRICTIONS: Record<string, string[]> = {
   "/admin/settings": ["SUPER_ADMIN", "ADMIN"],
 };
 
+interface ClerkSessionClaims {
+  metadata?: { role?: string };
+  role?: string;
+}
+
 export default clerkMiddleware(async (auth, req: NextRequest) => {
   const { pathname } = req.nextUrl;
   const authObj = await auth();
+  const claims = authObj.sessionClaims as ClerkSessionClaims | undefined;
 
   // Root /admin redirect to /admin/dashboard
   if (pathname === "/admin" || pathname === "/admin/") {
@@ -29,9 +35,7 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   // Handle public auth routes: /admin/sign-in and /admin/sign-up
   if (pathname === "/admin/sign-in" || pathname === "/admin/sign-up") {
     if (authObj.userId) {
-      const role = ((authObj.sessionClaims?.metadata as any)?.role ||
-        (authObj.sessionClaims as any)?.role ||
-        "") as string;
+      const role = (claims?.metadata?.role || claims?.role || "") as string;
       const upperRole = role.toUpperCase();
       if (ADMIN_ROLES.includes(upperRole)) {
         return NextResponse.redirect(new URL("/admin/dashboard", req.url));
@@ -51,9 +55,7 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     }
 
     // 2. Authenticated user: Check role if available in sessionClaims
-    const userRole = ((authObj.sessionClaims?.metadata as any)?.role ||
-      (authObj.sessionClaims as any)?.role ||
-      "") as string;
+    const userRole = (claims?.metadata?.role || claims?.role || "") as string;
     const upperRole = userRole.toUpperCase();
 
     // If explicit non-admin role (e.g. 'student' or 'user'), redirect to /unauthorized
