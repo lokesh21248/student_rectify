@@ -144,12 +144,14 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
     try {
       // Step 1: Create a sign-in attempt with the email identifier
-      await signIn.create({
+      const createRes = await signIn.create({
         identifier: email.trim(),
       });
+      if (createRes.error) throw createRes.error;
 
       // Step 2: Trigger the OTP code delivery to the user's email
-      await signIn.resetPasswordEmailCode.sendCode();
+      const sendRes = await signIn.resetPasswordEmailCode.sendCode();
+      if (sendRes.error) throw sendRes.error;
 
       setResetSent(true);
     } catch (err: any) {
@@ -195,15 +197,17 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     setErrorMessage(null);
 
     try {
-      await signIn.resetPasswordEmailCode.verifyCode({
+      const verifyRes = await signIn.resetPasswordEmailCode.verifyCode({
         code: resetCode.trim(),
       });
+      if (verifyRes.error) throw verifyRes.error;
 
       if (signIn.status === "needs_new_password") {
-        await signIn.resetPasswordEmailCode.submitPassword({
+        const submitRes = await signIn.resetPasswordEmailCode.submitPassword({
           password: newPassword,
           signOutOfOtherSessions: true,
         });
+        if (submitRes.error) throw submitRes.error;
       }
 
       if (signIn.status === "complete") {

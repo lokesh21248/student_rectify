@@ -105,19 +105,22 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
     try {
       // 1. Create the Clerk signup with email + password (current SignUpFuture API)
-      await signUp.password({
+      const pwdRes = await signUp.password({
         emailAddress: email.trim(),
         password: password,
       });
+      if (pwdRes.error) throw pwdRes.error;
 
       // 2. Route based on what Clerk requires next
       if (signUp.status === "missing_requirements" || signUp.unverifiedFields?.includes("email_address")) {
         setStatusMessage("Sending verification code to your email...");
-        await signUp.verifications.sendEmailCode();
+        const sendRes1 = await signUp.verifications.sendEmailCode();
+        if (sendRes1.error) throw sendRes1.error;
         setPendingVerification(true);
       } else if (signUp.status === "complete") {
         // Signup completed without requiring email verification
-        await signUp.finalize();
+        const finalizeRes1 = await signUp.finalize();
+        if (finalizeRes1.error) throw finalizeRes1.error;
         
         setStatusMessage("Setting up admin profile...");
         const profileRes = await fetch("/api/admin/profile", { method: "POST" });
@@ -140,7 +143,8 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
       } else {
         // Fallback: always try email verification
         setStatusMessage("Sending verification code to your email...");
-        await signUp.verifications.sendEmailCode();
+        const sendRes2 = await signUp.verifications.sendEmailCode();
+        if (sendRes2.error) throw sendRes2.error;
         setPendingVerification(true);
       }
     } catch (err: any) {
@@ -184,12 +188,14 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     setStatusMessage("Verifying account...");
 
     try {
-      await signUp.verifications.verifyEmailCode({
+      const verifyRes = await signUp.verifications.verifyEmailCode({
         code: verificationCode.trim(),
       });
+      if (verifyRes.error) throw verifyRes.error;
 
       if (signUp.status === "complete") {
-        await signUp.finalize();
+        const finalizeRes2 = await signUp.finalize();
+        if (finalizeRes2.error) throw finalizeRes2.error;
 
         setStatusMessage("Setting up admin profile...");
         const profileRes = await fetch("/api/admin/profile", { method: "POST" });
@@ -232,7 +238,8 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     setErrorMessage(null);
     setStatusMessage("Resending verification code...");
     try {
-      await signUp.verifications.sendEmailCode();
+      const sendRes3 = await signUp.verifications.sendEmailCode();
+      if (sendRes3.error) throw sendRes3.error;
       setStatusMessage("New verification code sent! Check your inbox.");
     } catch (err: any) {
       setErrorMessage(err.errors?.[0]?.message || err.message || "Failed to resend code.");
