@@ -230,7 +230,7 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
       if (code === "form_password_length_too_short") {
         setErrorMessage(
-          "Password must meet the project's minimum length requirement. To allow 8+ characters, ensure Minimum password length is set to 8 in your Clerk Dashboard under User & Authentication > Password."
+          clerkError + " (You can change this requirement in your Clerk Dashboard under User & Authentication > Password)"
         );
       } else if (code === "form_password_pwned") {
         setErrorMessage(
