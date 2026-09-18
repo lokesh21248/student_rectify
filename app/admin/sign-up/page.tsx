@@ -188,10 +188,12 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     setStatusMessage("Verifying account...");
 
     try {
-      const verifyRes = await signUp.verifications.verifyEmailCode({
-        code: verificationCode.trim(),
-      });
-      if (verifyRes.error) throw verifyRes.error;
+      if (signUp.status !== "complete") {
+        const verifyRes = await signUp.verifications.verifyEmailCode({
+          code: verificationCode.trim(),
+        });
+        if (verifyRes.error) throw verifyRes.error;
+      }
 
       if (signUp.status === "complete") {
         const finalizeRes2 = await signUp.finalize();

@@ -197,10 +197,12 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     setErrorMessage(null);
 
     try {
-      const verifyRes = await signIn.resetPasswordEmailCode.verifyCode({
-        code: resetCode.trim(),
-      });
-      if (verifyRes.error) throw verifyRes.error;
+      if (signIn.status !== "needs_new_password") {
+        const verifyRes = await signIn.resetPasswordEmailCode.verifyCode({
+          code: resetCode.trim(),
+        });
+        if (verifyRes.error) throw verifyRes.error;
+      }
 
       if (signIn.status === "needs_new_password") {
         const submitRes = await signIn.resetPasswordEmailCode.submitPassword({
