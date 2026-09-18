@@ -29,7 +29,7 @@ interface AdminSignInFormProps {
 export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: AdminSignInFormProps) {
   const router = useRouter();
   const { signIn } = useSignIn();
-  const { isSignedIn, user } = useUser();
+  const { isLoaded, isSignedIn, user } = useUser();
 
   const [redirectUrl, setRedirectUrl] = useState(getSafeRedirectUrl(initialRedirectUrl));
 
