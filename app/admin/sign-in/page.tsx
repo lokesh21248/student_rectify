@@ -78,18 +78,9 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     e.preventDefault();
     if (loading) return;
 
-    let activeSignIn = signIn;
-    let activeSetActive = setActive;
-
-    if (!isLoaded || !activeSignIn) {
-      const clerk = typeof window !== "undefined" ? (window as any).Clerk : null;
-      if (clerk?.client?.signIn) {
-        activeSignIn = clerk.client.signIn;
-        activeSetActive = (opts: any) => clerk.setActive(opts);
-      } else {
-        setErrorMessage("Authentication service is initializing. Please wait a moment and click sign in again.");
-        return;
-      }
+    if (!isLoaded || !signIn) {
+      setErrorMessage("Authentication service is initializing. Please wait a moment and click sign in again.");
+      return;
     }
 
     setLoading(true);
@@ -97,14 +88,16 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     setStatusMessage("Verifying credentials with Clerk...");
 
     try {
-      const result = await activeSignIn.create({
+      await signIn.password({
         identifier: email.trim(),
         password: password,
       });
 
-      if (result.status === "complete") {
+      if (signIn.status === "complete") {
+        await signIn.finalize();
+
         setStatusMessage("Activating session...");
-        await activeSetActive({ session: result.createdSessionId });
+        await setActive({ session: signIn.createdSessionId });
 
         setStatusMessage("Checking administrator permissions...");
         const authCheckRes = await fetch("/api/admin/check-auth");
@@ -117,7 +110,7 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
           setStatusMessage("Account not authorized. Redirecting...");
           window.location.href = "/unauthorized";
         }
-      } else if (result.status === "needs_first_factor" || result.status === "needs_second_factor") {
+      } else if (signIn.status === "needs_first_factor" || signIn.status === "needs_second_factor") {
         setErrorMessage("Additional two-factor verification is required for this account.");
       } else {
         setErrorMessage("Sign in incomplete. Please check your credentials or verify your email.");
@@ -139,15 +132,9 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     e.preventDefault();
     if (loading) return;
 
-    let activeSignIn = signIn;
-    if (!isLoaded || !activeSignIn) {
-      const clerk = typeof window !== "undefined" ? (window as any).Clerk : null;
-      if (clerk?.client?.signIn) {
-        activeSignIn = clerk.client.signIn;
-      } else {
-        setErrorMessage("Authentication service is initializing. Please wait a moment and try again.");
-        return;
-      }
+    if (!isLoaded || !signIn) {
+      setErrorMessage("Authentication service is initializing. Please wait a moment and try again.");
+      return;
     }
 
     if (!email.trim()) {
@@ -160,27 +147,12 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
     try {
       // Step 1: Create a sign-in attempt with the email identifier
-      const signInAttempt = await activeSignIn.create({
+      await signIn.create({
         identifier: email.trim(),
       });
 
-      // Step 2: Locate the reset_password_email_code strategy factor
-      const resetFactor = signInAttempt.supportedFirstFactors?.find(
-        (ff: any) => ff.strategy === "reset_password_email_code"
-      ) as any;
-
-      if (!resetFactor || !resetFactor.emailAddressId) {
-        setErrorMessage(
-          "Password reset via email code is not available for this account. Please verify your email or contact your platform administrator."
-        );
-        return;
-      }
-
-      // Step 3: Trigger the OTP code delivery to the user's email
-      await activeSignIn.prepareFirstFactor({
-        strategy: "reset_password_email_code",
-        emailAddressId: resetFactor.emailAddressId,
-      });
+      // Step 2: Trigger the OTP code delivery to the user's email
+      await signIn.resetPasswordEmailCode.sendCode();
 
       setResetSent(true);
     } catch (err: any) {
@@ -207,18 +179,9 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     e.preventDefault();
     if (loading) return;
 
-    let activeSignIn = signIn;
-    let activeSetActive = setActive;
-
-    if (!isLoaded || !activeSignIn) {
-      const clerk = typeof window !== "undefined" ? (window as any).Clerk : null;
-      if (clerk?.client?.signIn) {
-        activeSignIn = clerk.client.signIn;
-        activeSetActive = (opts: any) => clerk.setActive(opts);
-      } else {
-        setErrorMessage("Authentication service is initializing. Please wait a moment.");
-        return;
-      }
+    if (!isLoaded || !signIn) {
+      setErrorMessage("Authentication service is initializing. Please wait a moment.");
+      return;
     }
 
     if (!resetCode.trim()) {
@@ -235,27 +198,23 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     setErrorMessage(null);
 
     try {
-      const result = await activeSignIn.attemptFirstFactor({
-        strategy: "reset_password_email_code",
+      await signIn.resetPasswordEmailCode.verifyCode({
         code: resetCode.trim(),
-        password: newPassword,
       });
 
-      if (result.status === "complete") {
-        await activeSetActive({ session: result.createdSessionId });
-        window.location.href = redirectUrl;
-      } else if (result.status === "needs_new_password") {
-        const resetResult = await (activeSignIn as any).resetPassword({
+      if (signIn.status === "needs_new_password") {
+        await signIn.resetPasswordEmailCode.submitPassword({
           password: newPassword,
+          signOutOfOtherSessions: true,
         });
-        if (resetResult.status === "complete") {
-          await activeSetActive({ session: resetResult.createdSessionId });
-          window.location.href = redirectUrl;
-        } else {
-          setErrorMessage("Password reset status: " + resetResult.status);
-        }
+      }
+
+      if (signIn.status === "complete") {
+        await signIn.finalize();
+        await setActive({ session: signIn.createdSessionId });
+        window.location.href = redirectUrl;
       } else {
-        setErrorMessage("Password reset requires further verification. Status: " + result.status);
+        setErrorMessage("Password reset requires further verification. Status: " + signIn.status);
       }
     } catch (err: any) {
       console.error("Reset password submit error:", err);
