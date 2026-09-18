@@ -30,7 +30,7 @@ interface AdminSignUpFormProps {
 
 export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: AdminSignUpFormProps) {
   const router = useRouter();
-  const { isLoaded, signUp, setActive } = useSignUp();
+  const { signUp } = useSignUp();
   const { isSignedIn, user } = useUser();
 
   const [redirectUrl, setRedirectUrl] = useState(getSafeRedirectUrl(initialRedirectUrl));
@@ -82,7 +82,7 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     e.preventDefault();
     if (loading) return;
 
-    if (!isLoaded || !signUp) {
+    if (!signUp) {
       setErrorMessage("Authentication service is initializing. Please wait a moment and click create account again.");
       return;
     }
@@ -111,7 +111,7 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
       });
 
       // 2. Route based on what Clerk requires next
-      if (signUp.status === "missing_requirements" || signUp.unverifiedFields?.includes("email_address") || signUp.status === "unverified") {
+      if (signUp.status === "missing_requirements" || signUp.unverifiedFields?.includes("email_address")) {
         setStatusMessage("Sending verification code to your email...");
         await signUp.verifications.sendEmailCode();
         setPendingVerification(true);
@@ -119,9 +119,6 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
         // Signup completed without requiring email verification
         await signUp.finalize();
         
-        setStatusMessage("Activating session...");
-        await setActive({ session: signUp.createdSessionId });
-
         setStatusMessage("Setting up admin profile...");
         const profileRes = await fetch("/api/admin/profile", { method: "POST" });
         if (!profileRes.ok) {
@@ -172,7 +169,7 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     e.preventDefault();
     if (loading) return;
 
-    if (!isLoaded || !signUp) {
+    if (!signUp) {
       setErrorMessage("Authentication service is initializing. Please wait a moment and click verify again.");
       return;
     }
@@ -193,9 +190,6 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
       if (signUp.status === "complete") {
         await signUp.finalize();
-
-        setStatusMessage("Activating session...");
-        await setActive({ session: signUp.createdSessionId });
 
         setStatusMessage("Setting up admin profile...");
         const profileRes = await fetch("/api/admin/profile", { method: "POST" });
@@ -233,7 +227,7 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
   // Resend Verification Code
   const handleResendCode = async () => {
-    if (!isLoaded || loading || !signUp) return;
+    if (loading || !signUp) return;
     setLoading(true);
     setErrorMessage(null);
     setStatusMessage("Resending verification code...");

@@ -28,7 +28,7 @@ interface AdminSignInFormProps {
 
 export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: AdminSignInFormProps) {
   const router = useRouter();
-  const { isLoaded, signIn, setActive } = useSignIn();
+  const { signIn } = useSignIn();
   const { isSignedIn, user } = useUser();
 
   const [redirectUrl, setRedirectUrl] = useState(getSafeRedirectUrl(initialRedirectUrl));
@@ -78,7 +78,7 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     e.preventDefault();
     if (loading) return;
 
-    if (!isLoaded || !signIn) {
+    if (!signIn) {
       setErrorMessage("Authentication service is initializing. Please wait a moment and click sign in again.");
       return;
     }
@@ -95,9 +95,6 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
       if (signIn.status === "complete") {
         await signIn.finalize();
-
-        setStatusMessage("Activating session...");
-        await setActive({ session: signIn.createdSessionId });
 
         setStatusMessage("Checking administrator permissions...");
         const authCheckRes = await fetch("/api/admin/check-auth");
@@ -211,7 +208,6 @@ export function AdminSignInForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
       if (signIn.status === "complete") {
         await signIn.finalize();
-        await setActive({ session: signIn.createdSessionId });
         window.location.href = redirectUrl;
       } else {
         setErrorMessage("Password reset requires further verification. Status: " + signIn.status);
