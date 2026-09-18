@@ -82,16 +82,9 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     e.preventDefault();
     if (loading) return;
 
-    let activeSignUp = signUp;
-
-    if (!isLoaded || !activeSignUp) {
-      const clerk = typeof window !== "undefined" ? (window as any).Clerk : null;
-      if (clerk?.client?.signUp) {
-        activeSignUp = clerk.client.signUp;
-      } else {
-        setErrorMessage("Authentication service is initializing. Please wait a moment and click create account again.");
-        return;
-      }
+    if (!isLoaded || !signUp) {
+      setErrorMessage("Authentication service is initializing. Please wait a moment and click create account again.");
+      return;
     }
 
     // Validate minimum 8 characters ONLY
@@ -111,25 +104,23 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     setStatusMessage("Creating account...");
 
     try {
-      // 1. Create the user in Clerk using the new password API
-      const result = await activeSignUp.password({
+      // 1. Create the Clerk signup with email + password (current SignUpFuture API)
+      await signUp.password({
         emailAddress: email.trim(),
         password: password,
       });
 
-      if (result.error) throw result.error;
-
-      // 2. Check if email verification code is required
-      if (activeSignUp.status === "missing_requirements") {
+      // 2. Route based on what Clerk requires next
+      if (signUp.status === "missing_requirements" || signUp.unverifiedFields?.includes("email_address") || signUp.status === "unverified") {
         setStatusMessage("Sending verification code to your email...");
-        const sendResult = await activeSignUp.verifications.sendEmailCode();
-        if (sendResult.error) throw sendResult.error;
+        await signUp.verifications.sendEmailCode();
         setPendingVerification(true);
-      } else if (activeSignUp.status === "complete") {
-        // Signup completed without email verification code requirement
+      } else if (signUp.status === "complete") {
+        // Signup completed without requiring email verification
+        await signUp.finalize();
+        
         setStatusMessage("Activating session...");
-        const finalizeResult = await activeSignUp.finalize();
-        if (finalizeResult.error) throw finalizeResult.error;
+        await setActive({ session: signUp.createdSessionId });
 
         setStatusMessage("Setting up admin profile...");
         const profileRes = await fetch("/api/admin/profile", { method: "POST" });
@@ -150,9 +141,9 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
           window.location.href = "/unauthorized";
         }
       } else {
-        // Prepare verification as default next step
-        const sendResult = await activeSignUp.verifications.sendEmailCode();
-        if (sendResult.error) throw sendResult.error;
+        // Fallback: always try email verification
+        setStatusMessage("Sending verification code to your email...");
+        await signUp.verifications.sendEmailCode();
         setPendingVerification(true);
       }
     } catch (err: any) {
@@ -181,16 +172,9 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     e.preventDefault();
     if (loading) return;
 
-    let activeSignUp = signUp;
-
-    if (!isLoaded || !activeSignUp) {
-      const clerk = typeof window !== "undefined" ? (window as any).Clerk : null;
-      if (clerk?.client?.signUp) {
-        activeSignUp = clerk.client.signUp;
-      } else {
-        setErrorMessage("Authentication service is initializing. Please wait a moment and click verify again.");
-        return;
-      }
+    if (!isLoaded || !signUp) {
+      setErrorMessage("Authentication service is initializing. Please wait a moment and click verify again.");
+      return;
     }
 
     if (!verificationCode.trim()) {
@@ -203,16 +187,15 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
     setStatusMessage("Verifying account...");
 
     try {
-      const verifyResult = await activeSignUp.verifications.verifyEmailCode({
+      await signUp.verifications.verifyEmailCode({
         code: verificationCode.trim(),
       });
 
-      if (verifyResult.error) throw verifyResult.error;
+      if (signUp.status === "complete") {
+        await signUp.finalize();
 
-      if (activeSignUp.status === "complete") {
         setStatusMessage("Activating session...");
-        const finalizeResult = await activeSignUp.finalize();
-        if (finalizeResult.error) throw finalizeResult.error;
+        await setActive({ session: signUp.createdSessionId });
 
         setStatusMessage("Setting up admin profile...");
         const profileRes = await fetch("/api/admin/profile", { method: "POST" });
@@ -233,7 +216,7 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
           window.location.href = "/unauthorized";
         }
       } else {
-        setErrorMessage("Verification requires additional steps. Status: " + activeSignUp.status);
+        setErrorMessage("Verification requires additional steps. Status: " + signUp.status);
       }
     } catch (err: any) {
       const clerkError =
@@ -250,13 +233,12 @@ export function AdminSignUpForm({ initialRedirectUrl = "/admin/dashboard" }: Adm
 
   // Resend Verification Code
   const handleResendCode = async () => {
-    if (!isLoaded || loading) return;
+    if (!isLoaded || loading || !signUp) return;
     setLoading(true);
     setErrorMessage(null);
     setStatusMessage("Resending verification code...");
     try {
-      const sendResult = await signUp.verifications.sendEmailCode();
-      if (sendResult.error) throw sendResult.error;
+      await signUp.verifications.sendEmailCode();
       setStatusMessage("New verification code sent! Check your inbox.");
     } catch (err: any) {
       setErrorMessage(err.errors?.[0]?.message || err.message || "Failed to resend code.");
